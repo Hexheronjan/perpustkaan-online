@@ -1,3 +1,4 @@
+// D:\Projek Coding\projek_pkl\src\lib\roles.js
 export const ROLES = Object.freeze({
 	VISITOR: 'visitor',
 	MEMBER: 'member',

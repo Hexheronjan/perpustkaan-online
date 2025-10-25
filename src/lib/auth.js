@@ -1,3 +1,4 @@
+// D:\Projek Coding\projek_pkl\src\lib\auth.js
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
