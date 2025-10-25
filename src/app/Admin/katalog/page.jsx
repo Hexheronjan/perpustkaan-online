@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, X, BookOpen, Calendar, Tag } from 'lucide-react';
 

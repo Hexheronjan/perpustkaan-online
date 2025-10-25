@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Users, Clock, CheckCircle, TrendingUp, AlertCircle } from 'lucide-react';
 
