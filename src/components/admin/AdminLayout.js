@@ -5,11 +5,11 @@ const AdminLayout = ({ children, activePage }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/admin/dashboard' },
-    { id: 'buku', label: 'Manajemen Buku', icon: BookOpen, path: '/admin/buku' },
-    { id: 'users', label: 'Manajemen User', icon: Users, path: '/admin/users' },
-    { id: 'approval', label: 'Approval Buku', icon: CheckSquare, path: '/admin/approval' },
-    { id: 'katalog', label: 'Katalog Buku', icon: Library, path: '/admin/katalog' },
+    { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/Admin/dashboard' },
+    { id: 'buku', label: 'Manajemen Buku', icon: BookOpen, path: '/Admin/buku' },
+    { id: 'users', label: 'Manajemen User', icon: Users, path: '/Admin/users' },
+    { id: 'approval', label: 'Approval Buku', icon: CheckSquare, path: '/Admin/approval' },
+    { id: 'katalog', label: 'Katalog Buku', icon: Library, path: '/Admin/katalog' },
   ];
 
   return (
