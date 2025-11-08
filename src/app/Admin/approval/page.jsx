@@ -144,7 +144,7 @@ const BookDetailView = ({ book, onApprove, onReject, onClose }) => {
   );
 };
 
-export default function ApprovalBuku() {
+export default function ApprovalBukuPage() {
   const [pendingBooks, setPendingBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedBook, setSelectedBook] = useState(null);
@@ -158,10 +158,12 @@ export default function ApprovalBuku() {
     try {
       const response = await fetch('/api/admin/buku-pending?status=pending');
       const data = await response.json();
-      setPendingBooks(data);
+      console.log('Pending books data:', data); // Debug log
+      setPendingBooks(Array.isArray(data) ? data : []);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching pending books:', error);
+      setPendingBooks([]);
       setLoading(false);
     }
   };
@@ -233,7 +235,7 @@ export default function ApprovalBuku() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {pendingBooks.map((book) => (
+          {Array.isArray(pendingBooks) && pendingBooks.map((book) => (
             <div key={book.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
               {book.sampul_buku ? (
                 <img
