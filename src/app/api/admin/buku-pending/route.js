@@ -3,127 +3,139 @@ import { NextResponse } from 'next/server';
 import { getDb, initDb, withTransaction } from '@/lib/db';
 import { requireRole, ROLES } from '@/lib/roles';
 
-initDb();
-
-function mapBukuPending(row) {
-	return {
-		id: row.id,
-		judul: row.judul,
-		penulis: row.penulis,
-		penerbit: row.penerbit,
-		tahun_terbit: row.tahun_terbit,
-		isbn: row.isbn,
-		jumlah_halaman: row.jumlah_halaman,
-		deskripsi: row.deskripsi,
-		stok_tersedia: row.stok_tersedia,
-		stok_total: row.stok_total,
-		sampul_buku: row.sampul_buku,
-		genre_id: row.genre_id,
-		status: row.status,
-		diajukan_oleh: row.diajukan_oleh,
-		disetujui_oleh: row.disetujui_oleh,
-		catatan_admin: row.catatan_admin,
-		created_at: row.created_at,
-		updated_at: row.updated_at,
-	};
-}
-
 export async function GET(req) {
-	const { ok } = requireRole(req, [ROLES.ADMIN]);
-	if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-	const db = getDb();
-	const { searchParams } = new URL(req.url);
-	const status = searchParams.get('status');
-	
-	let query = `SELECT * FROM buku_pending`;
-	const params = [];
-	
-	if (status) {
-		query += ` WHERE status = ?`;
-		params.push(status);
-	}
-	
-	query += ` ORDER BY created_at DESC`;
-	
-	const rows = db.prepare(query).all(...params);
-	return NextResponse.json(rows.map(mapBukuPending));
+  const { ok } = requireRole(req, [ROLES.ADMIN]);
+  if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+  
+  await initDb();
+  const db = getDb();
+  
+  try {
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get('status') || 'pending';
+    
+    const result = await db.query(`
+      SELECT 
+        bp.*,
+        g.nama_genre,
+        u1.username as diajukan_oleh_username,
+        u2.username as disetujui_oleh_username
+      FROM buku_pending bp
+      LEFT JOIN genre g ON bp.genre_id = g.id
+      LEFT JOIN users u1 ON bp.diajukan_oleh = u1.id
+      LEFT JOIN users u2 ON bp.disetujui_oleh = u2.id
+      WHERE bp.status = $1
+      ORDER BY bp.created_at DESC
+    `, [status]);
+    
+    console.log('✅ Buku pending fetched:', result.rows.length);
+    
+    // Return array langsung
+    return NextResponse.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error fetching buku pending:', error);
+    return NextResponse.json(
+      { error: error.message }, 
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(req) {
-	// Approve or reject pending book
-	const { ok } = requireRole(req, [ROLES.ADMIN]);
-	if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-	const db = getDb();
-	const body = await req.json();
-	const { 
-		id, 
-		action, // 'approve' or 'reject'
-		catatan_admin,
-		disetujui_oleh = 1 // Default admin user ID
-	} = body || {};
-	
-	if (!id || !action) {
-		return NextResponse.json({ 
-			message: 'id dan action (approve/reject) diperlukan' 
-		}, { status: 400 });
-	}
+  const { ok } = requireRole(req, [ROLES.ADMIN]);
+  if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+  
+  await initDb();
+  const db = getDb();
+  
+  try {
+    const body = await req.json();
+    const { id, action, catatan_admin, disetujui_oleh = 1 } = body;
+    
+    if (!id || !action) {
+      return NextResponse.json({ 
+        message: 'ID dan action (approve/reject) diperlukan' 
+      }, { status: 400 });
+    }
 
-	if (!['approve', 'reject'].includes(action)) {
-		return NextResponse.json({ 
-			message: 'action harus approve atau reject' 
-		}, { status: 400 });
-	}
+    if (!['approve', 'reject'].includes(action)) {
+      return NextResponse.json({ 
+        message: 'Action harus approve atau reject' 
+      }, { status: 400 });
+    }
 
-	try {
-		withTransaction(() => {
-			const pending = db.prepare(`SELECT * FROM buku_pending WHERE id = ? AND status = 'pending'`).get(id);
-			if (!pending) throw new Error('Buku pending tidak ditemukan atau sudah diproses');
+    await withTransaction(async (client) => {
+      // Get pending book
+      const pendingResult = await client.query(
+        `SELECT * FROM buku_pending WHERE id = $1 AND status = 'pending'`,
+        [id]
+      );
+      
+      if (pendingResult.rows.length === 0) {
+        throw new Error('Buku pending tidak ditemukan atau sudah diproses');
+      }
+      
+      const pending = pendingResult.rows[0];
 
-			if (action === 'approve') {
-				// Insert into main buku table
-				const insertBuku = db.prepare(`
-					INSERT INTO buku (
-						judul, penulis, penerbit, tahun_terbit, isbn, jumlah_halaman,
-						deskripsi, stok_tersedia, stok_total, sampul_buku, genre_id, is_approved
-					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-				`);
-				
-				const bukuInfo = insertBuku.run(
-					pending.judul,
-					pending.penulis,
-					pending.penerbit,
-					pending.tahun_terbit,
-					pending.isbn,
-					pending.jumlah_halaman,
-					pending.deskripsi,
-					pending.stok_tersedia,
-					pending.stok_total,
-					pending.sampul_buku,
-					pending.genre_id
-				);
-				
-				const bukuId = bukuInfo.lastInsertRowid;
-				
-				// Copy tags from pending to main table
-				const pendingTags = db.prepare(`SELECT tag_id FROM buku_pending_tags WHERE buku_pending_id = ?`).all(id);
-				const insertTag = db.prepare(`INSERT OR IGNORE INTO buku_tags (buku_id, tag_id) VALUES (?, ?)`);
-				for (const tag of pendingTags) {
-					insertTag.run(bukuId, tag.tag_id);
-				}
-			}
+      if (action === 'approve') {
+        // Insert into main buku table
+        const insertResult = await client.query(`
+          INSERT INTO buku (
+            judul, penulis, penerbit, tahun_terbit, isbn, jumlah_halaman,
+            deskripsi, stok_tersedia, stok_total, sampul_buku, genre_id, is_approved
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true)
+          RETURNING id
+        `, [
+          pending.judul, pending.penulis, pending.penerbit,
+          pending.tahun_terbit, pending.isbn, pending.jumlah_halaman,
+          pending.deskripsi, pending.stok_tersedia, pending.stok_total,
+          pending.sampul_buku, pending.genre_id
+        ]);
+        
+        const bukuId = insertResult.rows[0].id;
+        
+        // Copy tags from pending to main table
+        const tagsResult = await client.query(
+          `SELECT tag_id FROM buku_pending_tags WHERE buku_pending_id = $1`,
+          [id]
+        );
+        
+        for (const tag of tagsResult.rows) {
+          await client.query(
+            `INSERT INTO buku_tags (buku_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [bukuId, tag.tag_id]
+          );
+        }
+        
+        console.log('✅ Buku approved and added to catalog, ID:', bukuId);
+      }
 
-			// Update pending status
-			const newStatus = action === 'approve' ? 'approved' : 'rejected';
-			db.prepare(`
-				UPDATE buku_pending 
-				SET status = ?, disetujui_oleh = ?, catatan_admin = ?, updated_at = datetime('now')
-				WHERE id = ?
-			`).run(newStatus, disetujui_oleh, catatan_admin || null, id);
-		});
-	} catch (e) {
-		return NextResponse.json({ message: e.message || 'Proses approval gagal' }, { status: 400 });
-	}
+      // Update pending status
+      const newStatus = action === 'approve' ? 'approved' : 'rejected';
+      await client.query(`
+        UPDATE buku_pending 
+        SET status = $1, disetujui_oleh = $2, catatan_admin = $3, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $4
+      `, [newStatus, disetujui_oleh, catatan_admin || null, id]);
+      
+      console.log(`✅ Buku pending ${newStatus}, ID:`, id);
+    });
 
-	const row = db.prepare(`SELECT * FROM buku_pending WHERE id = ?`).get(id);
-	return NextResponse.json(mapBukuPending(row));
+    // Fetch updated pending book
+    const result = await db.query(
+      `SELECT bp.*, g.nama_genre 
+       FROM buku_pending bp 
+       LEFT JOIN genre g ON bp.genre_id = g.id 
+       WHERE bp.id = $1`,
+      [id]
+    );
+    
+    return NextResponse.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error processing approval:', error);
+    return NextResponse.json(
+      { message: error.message || 'Proses approval gagal' }, 
+      { status: 500 }
+    );
+  }
 }
