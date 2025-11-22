@@ -1,7 +1,8 @@
+// D:\Projek Coding\projek_pkl\src\app\Admin\users\page.jsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search, X, Shield, User } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, X, User } from 'lucide-react';
 
 const Modal = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
@@ -139,7 +140,7 @@ const RoleBadge = ({ roleId }) => {
   );
 };
 
-export default function ManajemenUsers() {
+export default function ManajemenUsersPage() {
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -156,15 +157,18 @@ export default function ManajemenUsers() {
     try {
       const rolesRes = await fetch('/api/admin/roles');
       const rolesData = await rolesRes.json();
-      setRoles(rolesData);
+      setRoles(Array.isArray(rolesData) ? rolesData : []);
 
       const usersRes = await fetch('/api/admin/users');
       const usersData = await usersRes.json();
-      setUsers(usersData);
+      console.log('Users data:', usersData); // Debug log
+      setUsers(Array.isArray(usersData) ? usersData : []);
       
       setLoading(false);
     } catch (error) {
       console.error('Error fetching data:', error);
+      setUsers([]);
+      setRoles([]);
       setLoading(false);
     }
   };
@@ -216,13 +220,13 @@ export default function ManajemenUsers() {
     }
   };
 
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = Array.isArray(users) ? users.filter(user => {
     const matchesSearch = user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.nama_lengkap?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = filterRole === 'all' || user.role_id === Number(filterRole);
     return matchesSearch && matchesRole;
-  });
+  }) : [];
 
   if (loading) {
     return (

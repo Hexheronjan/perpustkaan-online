@@ -1,3 +1,4 @@
+// D:\Projek Coding\projek_pkl\src\app\Admin\katalog\page.jsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -141,7 +142,7 @@ const BookDetail = ({ book }) => (
   </div>
 );
 
-export default function KatalogBuku() {
+export default function KatalogBukuPage() {
   const [books, setBooks] = useState([]);
   const [genres, setGenres] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -166,18 +167,27 @@ export default function KatalogBuku() {
       const booksData = await booksRes.json();
       const genresData = await genresRes.json();
 
-      setBooks(booksData.filter(book => book.is_approved));
-      setGenres(genresData);
+      console.log('Katalog books data:', booksData); // Debug log
+
+      const booksArray = Array.isArray(booksData) ? booksData : [];
+      const genresArray = Array.isArray(genresData) ? genresData : [];
+
+      setBooks(booksArray.filter(book => book.is_approved));
+      setGenres(genresArray);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching data:', error);
+      setBooks([]);
+      setGenres([]);
       setLoading(false);
     }
   };
 
-  const years = [...new Set(books.map(book => book.tahun_terbit).filter(Boolean))].sort((a, b) => b - a);
+  const years = Array.isArray(books) 
+    ? [...new Set(books.map(book => book.tahun_terbit).filter(Boolean))].sort((a, b) => b - a)
+    : [];
 
-  const filteredBooks = books.filter(book => {
+  const filteredBooks = Array.isArray(books) ? books.filter(book => {
     const matchesSearch = 
       book.judul?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       book.penulis?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -187,7 +197,7 @@ export default function KatalogBuku() {
     const matchesYear = selectedYear === 'all' || book.tahun_terbit === Number(selectedYear);
     
     return matchesSearch && matchesGenre && matchesYear;
-  });
+  }) : [];
 
   const clearFilters = () => {
     setSearchTerm('');
@@ -216,7 +226,6 @@ export default function KatalogBuku() {
         <p className="text-gray-600">Telusuri koleksi lengkap perpustakaan</p>
       </div>
 
-      {/* Search and Filter Bar */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <div className="flex flex-col gap-4">
           <div className="flex gap-3">
@@ -283,14 +292,12 @@ export default function KatalogBuku() {
         </div>
       </div>
 
-      {/* Results Info */}
       <div className="mb-4">
         <p className="text-gray-600">
           Menampilkan <span className="font-semibold">{filteredBooks.length}</span> dari {books.length} buku
         </p>
       </div>
 
-      {/* Books Grid */}
       {filteredBooks.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-12 text-center">
           <BookOpen size={48} className="mx-auto text-gray-400 mb-4" />

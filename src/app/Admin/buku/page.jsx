@@ -1,3 +1,4 @@
+// D:\Projek Coding\projek_pkl\src\app\Admin\buku\page.jsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -181,7 +182,7 @@ const BookForm = ({ book, genres, tags, onSubmit, onCancel }) => {
   );
 };
 
-export default function ManajemenBuku() {
+export default function ManajemenBukuPage() {
   const [books, setBooks] = useState([]);
   const [genres, setGenres] = useState([]);
   const [tags, setTags] = useState([]);
@@ -206,12 +207,17 @@ export default function ManajemenBuku() {
       const genresData = await genresRes.json();
       const tagsData = await tagsRes.json();
 
-      setBooks(booksData);
-      setGenres(genresData);
-      setTags(tagsData);
+      console.log('Books data:', booksData); // Debug log
+
+      setBooks(Array.isArray(booksData) ? booksData : []);
+      setGenres(Array.isArray(genresData) ? genresData : []);
+      setTags(Array.isArray(tagsData) ? tagsData : []);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching data:', error);
+      setBooks([]);
+      setGenres([]);
+      setTags([]);
       setLoading(false);
     }
   };
@@ -249,10 +255,10 @@ export default function ManajemenBuku() {
     }
   };
 
-  const filteredBooks = books.filter(book =>
+  const filteredBooks = Array.isArray(books) ? books.filter(book =>
     book.judul?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     book.penulis?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ) : [];
 
   if (loading) {
     return (
