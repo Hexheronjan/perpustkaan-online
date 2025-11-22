@@ -1,29 +1,28 @@
-// "D:\projekakhir_pkl\Projek-akhir-pkl\src\components\admin\AdminLayout.js"
+// src/components/staf/StafLayout.js
 'use client';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, BookOpen, Users, CheckSquare, Library, Menu, X, LogOut, Settings } from 'lucide-react';
+import { Home, BookOpen, Users, Library, Menu, X, LogOut, Settings } from 'lucide-react';
 
-const AdminLayout = ({ children }) => {
+const StafLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const pathname = usePathname();
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/Admin/dashboard' },
-    { id: 'buku', label: 'Manajemen Buku', icon: BookOpen, path: '/Admin/buku' },
-    { id: 'users', label: 'Manajemen User', icon: Users, path: '/Admin/users' },
-    { id: 'approval', label: 'Approval Buku', icon: CheckSquare, path: '/Admin/approval' },
-    { id: 'katalog', label: 'Katalog Buku', icon: Library, path: '/Admin/katalog' },
+    { id: 'dashboard', label: 'Dashboard', icon: Home, path: '/staf/dashboard' },
+    { id: 'buku', label: 'Manajemen Buku', icon: BookOpen, path: '/staf/buku' },
+    { id: 'users', label: 'Manajemen User', icon: Users, path: '/staf/users' },
+    { id: 'katalog', label: 'Katalog Buku', icon: Library, path: '/staf/katalog' },
   ];
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-indigo-900 text-white transition-all duration-300 flex flex-col`}>
-        <div className="p-4 flex items-center justify-between border-b border-indigo-800">
-          {sidebarOpen && <h1 className="text-xl font-bold">Perpustakaan Admin</h1>}
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg hover:bg-indigo-800">
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-blue-900 text-white transition-all duration-300 flex flex-col`}>
+        <div className="p-4 flex items-center justify-between border-b border-blue-800">
+          {sidebarOpen && <h1 className="text-xl font-bold">Perpustakaan Staf</h1>}
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg hover:bg-blue-800">
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
@@ -37,7 +36,7 @@ const AdminLayout = ({ children }) => {
                 key={item.id}
                 href={item.path}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  isActive ? 'bg-indigo-700 text-white' : 'hover:bg-indigo-800 text-indigo-100'
+                  isActive ? 'bg-blue-700 text-white' : 'hover:bg-blue-800 text-blue-100'
                 }`}
               >
                 <Icon size={20} />
@@ -47,8 +46,8 @@ const AdminLayout = ({ children }) => {
           })}
         </nav>
 
-        <div className="p-4 border-t border-indigo-800 space-y-2">
-          <button className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-indigo-800 w-full text-left">
+        <div className="p-4 border-t border-blue-800 space-y-2">
+          <button className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-800 w-full text-left">
             <Settings size={20} />
             {sidebarOpen && <span>Pengaturan</span>}
           </button>
@@ -66,4 +65,4 @@ const AdminLayout = ({ children }) => {
   );
 };
 
-export default AdminLayout;
+export default StafLayout;

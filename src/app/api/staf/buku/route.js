@@ -1,3 +1,4 @@
+// src/app/api/staf/buku/route.js
 import { NextResponse } from 'next/server';
 import { getDb, initDb, withTransaction } from '@/lib/db';
 import { requireRole, ROLES } from '@/lib/roles';
@@ -26,10 +27,10 @@ export async function GET(req) {
 	const { ok } = requireRole(req, [ROLES.STAF, ROLES.ADMIN]);
 	if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 	
-	await initDb();
-	const db = getDb();
+		await initDb();
+		const db = getDb();
 	const result = await db.query(`SELECT * FROM buku`);
-	return NextResponse.json(result.rows.map(mapBuku));
+		return NextResponse.json(result.rows.map(mapBuku));
 }
 
 export async function POST(req) {
@@ -37,32 +38,32 @@ export async function POST(req) {
 	const { ok, role } = requireRole(req, [ROLES.STAF, ROLES.ADMIN]);
 	if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 	
-	await initDb();
-	const db = getDb();
-	const body = await req.json();
-	const { 
-		judul, 
-		penulis, 
-		penerbit,
-		tahun_terbit,
-		isbn,
-		jumlah_halaman,
-		deskripsi,
-		stok_tersedia = 0, 
-		stok_total = 0,
-		sampul_buku,
-		genre_id, 
-		tag_ids = [], 
-		diajukan_oleh = 2 // Default staf user ID
-	} = body || {};
-	
-	if (!judul || !penulis) {
-		return NextResponse.json({ 
-			message: 'judul dan penulis diperlukan' 
-		}, { status: 400 });
-	}
+		await initDb();
+		const db = getDb();
+		const body = await req.json();
+		const { 
+			judul, 
+			penulis, 
+			penerbit,
+			tahun_terbit,
+			isbn,
+			jumlah_halaman,
+			deskripsi,
+			stok_tersedia = 0, 
+			stok_total = 0,
+			sampul_buku,
+			genre_id, 
+			tag_ids = [], 
+			diajukan_oleh = 2 // Default staf user ID
+		} = body || {};
+		
+		if (!judul || !penulis) {
+			return NextResponse.json({ 
+				message: 'judul dan penulis diperlukan' 
+			}, { status: 400 });
+		}
 
-	let createdId;
+		let createdId;
 	try {
 		await withTransaction(async (client) => {
 			const insertResult = await client.query(`
@@ -103,38 +104,38 @@ export async function POST(req) {
 		return NextResponse.json({ message: e.message || 'Gagal membuat buku pending' }, { status: 400 });
 	}
 
-	const result = await db.query(`SELECT * FROM buku_pending WHERE id = $1`, [createdId]);
-	return NextResponse.json({ 
-		...mapBuku(result.rows[0]), 
-		status: 'pending',
-		approvalStatus: 'pending' 
-	}, { status: 201 });
+		const result = await db.query(`SELECT * FROM buku_pending WHERE id = $1`, [createdId]);
+		return NextResponse.json({ 
+			...mapBuku(result.rows[0]), 
+			status: 'pending',
+			approvalStatus: 'pending' 
+		}, { status: 201 });
 }
 
 export async function PUT(req) {
 	const { ok } = requireRole(req, [ROLES.STAF, ROLES.ADMIN]);
 	if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 	
-	await initDb();
-	const db = getDb();
-	const body = await req.json();
-	const { 
-		id, 
-		judul, 
-		penulis, 
-		penerbit,
-		tahun_terbit,
-		isbn,
-		jumlah_halaman,
-		deskripsi,
-		stok_tersedia,
-		stok_total,
-		sampul_buku,
-		genre_id, 
-		tag_ids 
-	} = body || {};
-	
-	if (!id) return NextResponse.json({ message: 'id diperlukan' }, { status: 400 });
+		await initDb();
+		const db = getDb();
+		const body = await req.json();
+		const { 
+			id, 
+			judul, 
+			penulis, 
+			penerbit,
+			tahun_terbit,
+			isbn,
+			jumlah_halaman,
+			deskripsi,
+			stok_tersedia,
+			stok_total,
+			sampul_buku,
+			genre_id, 
+			tag_ids 
+		} = body || {};
+		
+		if (!id) return NextResponse.json({ message: 'id diperlukan' }, { status: 400 });
 
 	try {
 		await withTransaction(async (client) => {
@@ -188,21 +189,21 @@ export async function PUT(req) {
 		return NextResponse.json({ message: e.message || 'Update gagal' }, { status: 400 });
 	}
 
-	const result = await db.query(`SELECT * FROM buku WHERE id = $1`, [id]);
-	return NextResponse.json(mapBuku(result.rows[0]));
+		const result = await db.query(`SELECT * FROM buku WHERE id = $1`, [id]);
+		return NextResponse.json(mapBuku(result.rows[0]));
 }
 
 export async function DELETE(req) {
 	const { ok } = requireRole(req, [ROLES.STAF, ROLES.ADMIN]);
 	if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 	
-	await initDb();
-	const db = getDb();
-	const { searchParams } = new URL(req.url);
-	const id = Number(searchParams.get('id'));
-	if (!id) return NextResponse.json({ message: 'id diperlukan' }, { status: 400 });
-	
-	const result = await db.query(`DELETE FROM buku WHERE id = $1`, [id]);
+		await initDb();
+		const db = getDb();
+		const { searchParams } = new URL(req.url);
+		const id = Number(searchParams.get('id'));
+		if (!id) return NextResponse.json({ message: 'id diperlukan' }, { status: 400 });
+		
+		const result = await db.query(`DELETE FROM buku WHERE id = $1`, [id]);
 	if (result.rowCount === 0) return NextResponse.json({ message: 'Buku tidak ditemukan' }, { status: 404 });
-	return NextResponse.json({ success: true });
+		return NextResponse.json({ success: true });
 }

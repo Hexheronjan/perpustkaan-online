@@ -20,12 +20,12 @@ export function getUser() {
   if (typeof window === "undefined") return null;
   const raw = window.localStorage.getItem(USER_KEY);
   if (!raw) return null;
-  try {
+      try {
     return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
+      } catch {
+        return null;
+      }
+    }
 
 export function setUser(user) {
   if (typeof window === "undefined") return;
