@@ -1,44 +1,67 @@
-"use client";
-
-// Minimal client-side auth utilities for storing JWT and user info
-
-const TOKEN_KEY = "accessToken";
-const USER_KEY = "authUser";
-
-export function getToken() {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(TOKEN_KEY);
-}
+// src/lib/client-auth.js
+const TOKEN_KEY = 'auth_token';
+const USER_KEY = 'auth_user';
 
 export function setToken(token) {
-  if (typeof window === "undefined") return;
-  if (token) window.localStorage.setItem(TOKEN_KEY, token);
-  else window.localStorage.removeItem(TOKEN_KEY);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(TOKEN_KEY, token);
+    console.log('✅ Token saved to localStorage');
+    console.log('Token preview:', token.substring(0, 50) + '...');
+  }
+}
+
+export function getToken() {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) {
+      console.log('🎫 Token retrieved from localStorage');
+    } else {
+      console.warn('⚠️ No token found in localStorage');
+    }
+    return token;
+  }
+  return null;
+}
+
+export function setUser(user) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    console.log('✅ User saved to localStorage:', user);
+  }
 }
 
 export function getUser() {
-  if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(USER_KEY);
-  if (!raw) return null;
+  if (typeof window !== 'undefined') {
+    const userData = localStorage.getItem(USER_KEY);
+    if (userData) {
       try {
-    return JSON.parse(raw);
+        return JSON.parse(userData);
       } catch {
         return null;
       }
     }
-
-export function setUser(user) {
-  if (typeof window === "undefined") return;
-  if (user) window.localStorage.setItem(USER_KEY, JSON.stringify(user));
-  else window.localStorage.removeItem(USER_KEY);
+  }
+  return null;
 }
 
 export function clearAuth() {
-  if (typeof window === "undefined") return;
-  window.localStorage.removeItem(TOKEN_KEY);
-  window.localStorage.removeItem(USER_KEY);
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    console.log('🗑️ Auth cleared from localStorage');
+  }
 }
 
-export function getRole() {
-  return getUser()?.role || "visitor";
+export function isAuthenticated() {
+  return !!getToken();
+}
+
+export function getAuthHeaders() {
+  const token = getToken();
+  if (token) {
+    return {
+      'Authorization': `Bearer ${token}`,
+    };
+  }
+  return {};
 }

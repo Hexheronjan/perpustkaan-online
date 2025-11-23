@@ -48,9 +48,9 @@ export default function LoginPage() {
       console.log("✅ Login berhasil!");
       console.log("User:", res.user);
       console.log("Role:", res.user.role);
+      console.log("Token saved to localStorage");
       
       if (!remember) {
-        // Optional: if not remember, clear token on tab close
         window.addEventListener("beforeunload", () => clearAuth(), { once: true });
       }
       
@@ -76,10 +76,6 @@ export default function LoginPage() {
           console.log("Redirecting to Homepage");
       }
       
-      // Show success message briefly before redirect
-      setError("");
-      
-      // Redirect menggunakan Next.js router
       setTimeout(() => {
         router.push(redirectPath);
       }, 500);
@@ -94,7 +90,6 @@ export default function LoginPage() {
 
   const currentUser = getUser();
 
-  // Jika sudah login, tampilkan info dan tombol logout
   if (currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f4f8fb] p-6">
@@ -115,9 +110,6 @@ export default function LoginPage() {
               <p className="text-sm text-gray-600 mt-1">
                 Role: <span className="font-semibold text-blue-600">{currentUser.role}</span>
               </p>
-              {currentUser.roleDisplay && (
-                <p className="text-xs text-gray-500 mt-1">{currentUser.roleDisplay}</p>
-              )}
             </div>
           </div>
 
@@ -292,51 +284,58 @@ export default function LoginPage() {
             </div>
           </form>
 
-          {/* Quick Test Login Buttons (Remove in production) */}
+          {/* Quick Test Login Buttons - FIXED PASSWORD */}
           <div className="mt-8 pt-6 border-t border-gray-200">
             <p className="text-xs text-gray-500 text-center mb-3">Quick Test Login (Development Only)</p>
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => {
                   setUsernameOrEmail("admin");
-                  setPassword("$2a$10$example");
+                  setPassword("admin123"); // Plain text password
                 }}
                 className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-2 rounded transition"
                 disabled={loading}
+                type="button"
               >
                 Admin
               </button>
               <button
                 onClick={() => {
                   setUsernameOrEmail("staf1");
-                  setPassword("$2a$10$example");
+                  setPassword("staf123"); // Plain text password
                 }}
                 className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-2 rounded transition"
                 disabled={loading}
+                type="button"
               >
                 Staf
               </button>
               <button
                 onClick={() => {
                   setUsernameOrEmail("member1");
-                  setPassword("$2a$10$example");
+                  setPassword("member123"); // Plain text password
                 }}
                 className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-2 rounded transition"
                 disabled={loading}
+                type="button"
               >
                 Member
               </button>
               <button
                 onClick={() => {
                   setUsernameOrEmail("visitor1");
-                  setPassword("$2a$10$example");
+                  setPassword("visitor123"); // Plain text password
                 }}
                 className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded transition"
                 disabled={loading}
+                type="button"
               >
                 Visitor
               </button>
             </div>
+            <p className="text-xs text-gray-400 text-center mt-2">
+              Click button, then click "Login Now"
+            </p>
           </div>
         </div>
       </div>
