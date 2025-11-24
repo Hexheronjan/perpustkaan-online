@@ -1,141 +1,65 @@
-"use client";
-
 import { useState } from "react";
-import { apiFetch } from "@/lib/api-client";
-import { setToken, setUser, clearAuth, getUser } from "@/lib/client-auth";
-import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { BookOpen, Mail, Lock, Eye, EyeOff, LogIn, UserCircle, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
-export default function LoginPage() {
+export default function ModernLoginPage() {
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const router = useRouter();
+  const [success, setSuccess] = useState(false);
 
   async function handleSubmit(e) {
-    e.preventDefault();
+    e?.preventDefault?.();
     setError("");
     setLoading(true);
-    
-    console.log("=== LOGIN ATTEMPT ===");
-    console.log("Username/Email:", usernameOrEmail);
-    
+
     try {
+      // Simulasi API call - Ganti dengan apiFetch yang sebenarnya
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       const body = usernameOrEmail.includes("@")
         ? { email: usernameOrEmail, password }
         : { username: usernameOrEmail, password };
+
+      console.log("Login attempt:", body);
       
-      console.log("Sending request to /api/auth/login");
-      
-      const res = await apiFetch("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
-      
-      console.log("Login response:", res);
-      
-      if (!res.success || !res.accessToken) {
-        throw new Error(res.message || "Login gagal");
-      }
-      
-      // Simpan token dan user data
-      setToken(res.accessToken);
-      setUser(res.user);
-      
-      console.log("✅ Login berhasil!");
-      console.log("User:", res.user);
-      console.log("Role:", res.user.role);
-      console.log("Token saved to localStorage");
-      
-      if (!remember) {
-        window.addEventListener("beforeunload", () => clearAuth(), { once: true });
-      }
-      
-      // Redirect berdasarkan role
-      const role = res.user.role;
-      let redirectPath = "/";
-      
-      switch(role) {
-        case "admin":
-          redirectPath = "/admin/dashboard";
-          console.log("Redirecting to Admin Dashboard");
-          break;
-        case "staf":
-          redirectPath = "/staf/dashboard";
-          console.log("Redirecting to Staf Dashboard");
-          break;
-        case "member":
-          redirectPath = "/member/dashboard";
-          console.log("Redirecting to Member Dashboard");
-          break;
-        default:
-          redirectPath = "/";
-          console.log("Redirecting to Homepage");
-      }
-      
+      setSuccess(true);
       setTimeout(() => {
-        router.push(redirectPath);
-      }, 500);
+        console.log("Redirecting to dashboard...");
+      }, 1500);
       
     } catch (e) {
-      console.error("❌ Login error:", e);
-      setError(e.message || "Login gagal");
+      setError(e.message || "Login gagal. Silakan coba lagi.");
     } finally {
       setLoading(false);
     }
   }
 
-  const currentUser = getUser();
+  function handleVisitorAccess() {
+    console.log("Accessing as visitor...");
+    // window.location.href = "/visitor"
+  }
 
-  if (currentUser) {
+  function handleQuickLogin(role, username, pwd) {
+    setUsernameOrEmail(username);
+    setPassword(pwd);
+  }
+
+  if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f4f8fb] p-6">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
-          <div className="text-center mb-6">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-800">Sudah Login</h2>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-4">
+        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 max-w-md w-full text-center border border-white/20">
+          <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+            <CheckCircle2 size={40} className="text-white" />
           </div>
-
-          <div className="bg-green-50 border-2 border-green-200 rounded-lg p-6 mb-6">
-            <div className="text-center">
-              <p className="text-gray-700 mb-2">Anda sudah login sebagai:</p>
-              <p className="text-xl font-bold text-gray-900">{currentUser.username}</p>
-              <p className="text-sm text-gray-600 mt-1">
-                Role: <span className="font-semibold text-blue-600">{currentUser.role}</span>
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <button
-              onClick={() => {
-                const role = currentUser.role;
-                if (role === 'admin') router.push('/admin/dashboard');
-                else if (role === 'staf') router.push('/staf/dashboard');
-                else if (role === 'member') router.push('/member/dashboard');
-                else router.push('/');
-              }}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition"
-            >
-              Ke Dashboard
-            </button>
-            
-            <button
-              onClick={() => {
-                clearAuth();
-                window.location.reload();
-              }}
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-lg transition"
-            >
-              Logout
-            </button>
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-2">
+            Login Berhasil!
+          </h2>
+          <p className="text-gray-600 mb-4">Mengalihkan ke dashboard...</p>
+          <div className="flex justify-center">
+            <Loader2 className="animate-spin text-indigo-600" size={32} />
           </div>
         </div>
       </div>
@@ -143,202 +67,267 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f4f8fb] p-6">
-      <div className="w-full max-w-5xl bg-white rounded-2xl shadow-lg overflow-hidden grid grid-cols-1 md:grid-cols-2">
-        {/* Illustration / left */}
-        <div className="hidden md:flex items-center justify-center bg-[#e8f6f7] p-8">
-          <Image 
-            src="/globe.svg" 
-            alt="Illustration" 
-            width={320} 
-            height={320} 
-            className="opacity-80" 
-          />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-4 relative overflow-hidden">
+      {/* Animated background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
+        <div className="absolute top-40 right-10 w-72 h-72 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
+        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
+      </div>
+
+      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8 relative z-10">
+        {/* Left Side - Illustration */}
+        <div className="hidden lg:flex flex-col justify-center items-center bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 rounded-3xl p-12 text-white relative overflow-hidden shadow-2xl">
+          <div className="absolute inset-0 bg-black/10"></div>
+          <div className="relative z-10 text-center">
+            <div className="mb-8 flex justify-center">
+              <div className="relative">
+                <BookOpen size={120} className="text-white/90 animate-pulse" />
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-yellow-400 rounded-full animate-ping"></div>
+              </div>
+            </div>
+            <h1 className="text-5xl font-black mb-4 drop-shadow-lg">
+              Perpustakaan Digital
+            </h1>
+            <p className="text-xl text-white/90 mb-8 leading-relaxed">
+              Akses ribuan koleksi buku, artikel, dan jurnal dalam satu platform
+            </p>
+            <div className="space-y-4 text-left max-w-md mx-auto">
+              {[
+                "📚 10,000+ Koleksi Buku Digital",
+                "⚡ Peminjaman Instan 24/7",
+                "🔔 Notifikasi Otomatis",
+                "📊 Tracking Riwayat Baca"
+              ].map((feature, i) => (
+                <div key={i} className="flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-lg p-3 hover:bg-white/20 transition-all transform hover:scale-105">
+                  <div className="text-2xl">{feature.split(' ')[0]}</div>
+                  <span className="font-medium">{feature.substring(3)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* Form / right */}
-        <div className="p-8 md:p-12">
-          <div className="mb-6">
-            <div className="text-sky-600 font-semibold">Perpustakaan</div>
-            <h1 className="text-2xl md:text-3xl font-semibold mt-2">Welcome Back :)</h1>
-            <p className="text-gray-600 mt-2 text-sm">
-              Silakan login dengan email atau username dan password.
-            </p>
-          </div>
+        {/* Right Side - Login */}
+        <div className="flex items-center justify-center">
+          <div className="w-full max-w-md">
+            <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/20">
+              <div className="mb-8">
+                <div className="flex items-center gap-2 text-indigo-600 mb-4">
+                  <BookOpen size={28} className="animate-pulse" />
+                  <span className="font-bold text-xl">Perpustakaan</span>
+                </div>
+                <h2 className="text-3xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  Selamat Datang! 👋
+                </h2>
+                <p className="text-gray-600 mt-2">Masuk untuk melanjutkan ke akun Anda</p>
+              </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm text-gray-700 font-medium mb-2">
-                Email Address / Username
-              </label>
-              <input
-                type="text"
-                value={usernameOrEmail}
-                onChange={(e) => setUsernameOrEmail(e.target.value)}
-                placeholder="admin atau admin@perpustakaan.com"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition"
-                required
-                disabled={loading}
-              />
-            </div>
+              <div className="space-y-5">
+                {/* Email/Username */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Email atau Username
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <Mail size={20} className="text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
+                    </div>
+                    <input
+                      type="text"
+                      value={usernameOrEmail}
+                      onChange={(e) => setUsernameOrEmail(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
+                      placeholder="admin@perpustakaan.com"
+                      className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all bg-white/50"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
 
-            <div>
-              <label className="block text-sm text-gray-700 font-medium mb-2">
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-transparent transition"
-                required
-                disabled={loading}
-              />
-            </div>
+                {/* Password */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Password
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <Lock size={20} className="text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
+                    </div>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
+                      placeholder="••••••••"
+                      className="w-full pl-12 pr-12 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all bg-white/50"
+                      disabled={loading}
+                    />
+                    <button
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-indigo-500 transition-colors"
+                      disabled={loading}
+                    >
+                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
+                </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <label className="inline-flex items-center gap-2 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={remember} 
-                  onChange={(e) => setRemember(e.target.checked)}
-                  className="w-4 h-4 text-sky-600 rounded focus:ring-sky-400"
+                {/* Remember & Forgot */}
+                <div className="flex items-center justify-between text-sm">
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={remember}
+                      onChange={(e) => setRemember(e.target.checked)}
+                      className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
+                      disabled={loading}
+                    />
+                    <span className="text-gray-700 group-hover:text-indigo-600 transition-colors">
+                      Ingat saya
+                    </span>
+                  </label>
+                  <button
+                    onClick={() => alert("Fitur reset password segera hadir!")}
+                    className="text-indigo-600 hover:text-indigo-700 font-semibold hover:underline transition-all"
+                    disabled={loading}
+                  >
+                    Lupa Password?
+                  </button>
+                </div>
+
+                {/* Error */}
+                {error && (
+                  <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg flex items-start gap-3 animate-shake">
+                    <AlertCircle size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
+                    <span className="text-red-700 text-sm">{error}</span>
+                  </div>
+                )}
+
+                {/* Submit Button */}
+                <button
+                  onClick={handleSubmit}
                   disabled={loading}
-                />
-                <span className="text-gray-700">Remember Me</span>
-              </label>
-              <button 
-                type="button"
-                className="text-sky-600 hover:text-sky-700 transition"
-                disabled={loading}
-              >
-                Forgot Password?
-              </button>
-            </div>
+                  className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="animate-spin" size={20} />
+                      <span>Memproses...</span>
+                    </>
+                  ) : (
+                    <>
+                      <LogIn size={20} />
+                      <span>Masuk Sekarang</span>
+                    </>
+                  )}
+                </button>
 
-            {error && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded">
-                <div className="flex items-start">
-                  <svg className="w-5 h-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-red-700 text-sm">{error}</span>
+                {/* Visitor Button */}
+                <button
+                  onClick={handleVisitorAccess}
+                  disabled={loading}
+                  className="w-full border-2 border-indigo-200 hover:border-indigo-400 text-indigo-600 hover:text-indigo-700 font-semibold py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 hover:bg-indigo-50 transform hover:scale-105 active:scale-95"
+                >
+                  <UserCircle size={20} />
+                  <span>Masuk sebagai Visitor</span>
+                </button>
+
+                {/* Divider */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-4 bg-white text-gray-500">Atau daftar dengan</span>
+                  </div>
+                </div>
+
+                {/* Social Login */}
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { name: "Google", color: "from-red-500 to-orange-500", icon: "G" },
+                    { name: "Facebook", color: "from-blue-600 to-blue-700", icon: "f" },
+                    { name: "Twitter", color: "from-sky-500 to-blue-500", icon: "𝕏" }
+                  ].map((social) => (
+                    <button
+                      key={social.name}
+                      onClick={() => alert(`Login dengan ${social.name} segera hadir!`)}
+                      className={`bg-gradient-to-r ${social.color} hover:opacity-90 text-white font-bold py-3 rounded-xl transition-all transform hover:scale-105 active:scale-95 shadow-md`}
+                      disabled={loading}
+                    >
+                      {social.icon}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Register Link */}
+                <div className="text-center text-sm">
+                  <span className="text-gray-600">Belum punya akun? </span>
+                  <button
+                    onClick={() => alert("Redirect ke /Register")}
+                    className="text-indigo-600 hover:text-indigo-700 font-bold hover:underline"
+                  >
+                    Daftar Sekarang
+                  </button>
                 </div>
               </div>
-            )}
 
-            {loading && (
-              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                <div className="flex items-center">
-                  <svg className="animate-spin h-5 w-5 text-blue-500 mr-3" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span className="text-blue-700 text-sm">Memproses login...</span>
+              {/* Quick Login */}
+              <div className="mt-8 pt-6 border-t border-gray-200">
+                <p className="text-xs text-gray-500 text-center mb-3 font-semibold">
+                  🔧 Quick Login (Development Only)
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { role: "Admin", username: "admin", pwd: "admin123", color: "bg-purple-100 hover:bg-purple-200 text-purple-700" },
+                    { role: "Staf", username: "staf1", pwd: "staf123", color: "bg-blue-100 hover:bg-blue-200 text-blue-700" },
+                    { role: "Member", username: "member1", pwd: "member123", color: "bg-green-100 hover:bg-green-200 text-green-700" },
+                    { role: "Visitor", username: "visitor1", pwd: "visitor123", color: "bg-gray-100 hover:bg-gray-200 text-gray-700" }
+                  ].map((account) => (
+                    <button
+                      key={account.role}
+                      onClick={() => handleQuickLogin(account.role, account.username, account.pwd)}
+                      className={`text-xs ${account.color} px-3 py-2 rounded-lg transition-all font-semibold transform hover:scale-105`}
+                      disabled={loading}
+                    >
+                      {account.role}
+                    </button>
+                  ))}
                 </div>
-              </div>
-            )}
-
-            <div className="flex items-center gap-3">
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-full px-6 py-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg"
-              >
-                {loading ? "Processing..." : "Login Now"}
-              </button>
-              <Link
-                href="/"
-                className="flex-1 text-center border-2 border-gray-300 hover:border-gray-400 rounded-full px-6 py-3 text-gray-700 hover:bg-gray-50 font-semibold transition-all duration-200"
-              >
-                Create Account
-              </Link>
-            </div>
-
-            <div className="mt-6 text-center">
-              <div className="text-sm text-gray-500 mb-3">Or you can join with</div>
-              <div className="flex gap-3 justify-center">
-                <button 
-                  type="button" 
-                  className="border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 rounded-full w-12 h-12 flex items-center justify-center font-semibold text-gray-700 transition"
-                  disabled={loading}
-                >
-                  G
-                </button>
-                <button 
-                  type="button" 
-                  className="border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 rounded-full w-12 h-12 flex items-center justify-center font-semibold text-gray-700 transition"
-                  disabled={loading}
-                >
-                  F
-                </button>
-                <button 
-                  type="button" 
-                  className="border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 rounded-full w-12 h-12 flex items-center justify-center font-semibold text-gray-700 transition"
-                  disabled={loading}
-                >
-                  X
-                </button>
+                <p className="text-xs text-gray-400 text-center mt-2">
+                  Klik role, lalu tekan "Masuk Sekarang"
+                </p>
               </div>
             </div>
-          </form>
-
-          {/* Quick Test Login Buttons - FIXED PASSWORD */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <p className="text-xs text-gray-500 text-center mb-3">Quick Test Login (Development Only)</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => {
-                  setUsernameOrEmail("admin");
-                  setPassword("admin123"); // Plain text password
-                }}
-                className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-2 rounded transition"
-                disabled={loading}
-                type="button"
-              >
-                Admin
-              </button>
-              <button
-                onClick={() => {
-                  setUsernameOrEmail("staf1");
-                  setPassword("staf123"); // Plain text password
-                }}
-                className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-2 rounded transition"
-                disabled={loading}
-                type="button"
-              >
-                Staf
-              </button>
-              <button
-                onClick={() => {
-                  setUsernameOrEmail("member1");
-                  setPassword("member123"); // Plain text password
-                }}
-                className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-2 rounded transition"
-                disabled={loading}
-                type="button"
-              >
-                Member
-              </button>
-              <button
-                onClick={() => {
-                  setUsernameOrEmail("visitor1");
-                  setPassword("visitor123"); // Plain text password
-                }}
-                className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded transition"
-                disabled={loading}
-                type="button"
-              >
-                Visitor
-              </button>
-            </div>
-            <p className="text-xs text-gray-400 text-center mt-2">
-              Click button, then click "Login Now"
-            </p>
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes blob {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+          20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        .animate-shake {
+          animation: shake 0.5s;
+        }
+      `}</style>
     </div>
   );
 }
