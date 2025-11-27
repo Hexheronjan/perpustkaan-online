@@ -1,98 +1,218 @@
 // D:\Projek Coding\projek_pkl\src\app\api\admin\books\route.js
+// FIXED VERSION - Menggunakan PostgreSQL (bukan SQLite)
 import { NextResponse } from 'next/server';
 import { getDb, initDb, withTransaction } from '@/lib/db';
 import { getRoleFromRequest, requireRole, ROLES } from '@/lib/roles';
 
-initDb();
-
-function mapBook(row) {
-	return {
-		id: row.id,
-		title: row.title,
-		author: row.author,
-		genreId: row.genre_id,
-		stock: row.stock,
-		isApproved: !!row.is_approved,
-		createdAt: row.created_at,
-	};
-}
-
 export async function GET(req) {
-	// Any role can view; Admin has full list including unapproved
-	const role = getRoleFromRequest(req);
-	const db = getDb();
-	const includeUnapproved = role === ROLES.ADMIN || role === ROLES.STAF;
-	const rows = includeUnapproved
-		? db.prepare(`SELECT * FROM books`).all()
-		: db.prepare(`SELECT * FROM books WHERE is_approved = 1`).all();
-	return NextResponse.json(rows.map(mapBook));
+  await initDb();
+  const role = getRoleFromRequest(req);
+  const db = getDb();
+  
+  try {
+    // Admin dan Staf bisa lihat semua buku termasuk yang belum approved
+    const includeUnapproved = role === ROLES.ADMIN || role === ROLES.STAF;
+    
+    const query = includeUnapproved
+      ? `SELECT b.*, g.nama_genre FROM buku b LEFT JOIN genre g ON b.genre_id = g.id ORDER BY b.created_at DESC`
+      : `SELECT b.*, g.nama_genre FROM buku b LEFT JOIN genre g ON b.genre_id = g.id WHERE b.is_approved = true ORDER BY b.created_at DESC`;
+    
+    const result = await db.query(query);
+    return NextResponse.json(result.rows);
+  } catch (error) {
+    console.error('❌ Error fetching books:', error);
+    return NextResponse.json({ 
+      message: 'Failed to fetch books', 
+      error: error.message 
+    }, { status: 500 });
+  }
 }
 
 export async function POST(req) {
-	// Admin can directly add approved books
-	const { ok } = requireRole(req, [ROLES.ADMIN]);
-	if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-	const db = getDb();
-	const body = await req.json();
-	const { title, author, genreId, stock = 0, tagIds = [] } = body || {};
-	if (!title) return NextResponse.json({ message: 'title required' }, { status: 400 });
+  const { ok } = requireRole(req, [ROLES.ADMIN]);
+  if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+  
+  await initDb();
+  const db = getDb();
+  
+  try {
+    const body = await req.json();
+    const { 
+      judul, 
+      penulis, 
+      penerbit,
+      tahun_terbit,
+      isbn,
+      jumlah_halaman,
+      deskripsi,
+      stok_tersedia = 0, 
+      stok_total = 0,
+      sampul_buku,
+      genre_id, 
+      tag_ids = [] 
+    } = body;
+    
+    if (!judul || !penulis) {
+      return NextResponse.json({ 
+        message: 'Judul dan penulis wajib diisi' 
+      }, { status: 400 });
+    }
 
-	let createdId;
-	withTransaction(() => {
-		const insert = db.prepare(`INSERT INTO books (title, author, genre_id, stock, is_approved) VALUES (?, ?, ?, ?, 1)`);
-		const info = insert.run(title, author || null, genreId || null, Number(stock) || 0);
-		createdId = info.lastInsertRowid;
-		if (Array.isArray(tagIds) && tagIds.length) {
-			const insertTag = db.prepare(`INSERT OR IGNORE INTO book_tags (book_id, tag_id) VALUES (?, ?)`);
-			for (const tagId of tagIds) insertTag.run(createdId, tagId);
-		}
-	});
+    const createdId = await withTransaction(async (client) => {
+      // Admin bisa langsung add buku yang sudah approved
+      const insertResult = await client.query(`
+        INSERT INTO buku (
+          judul, penulis, penerbit, tahun_terbit, isbn, jumlah_halaman, 
+          deskripsi, stok_tersedia, stok_total, sampul_buku, genre_id, is_approved
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true)
+        RETURNING id
+      `, [
+        judul, penulis, penerbit || null, tahun_terbit || null,
+        isbn || null, jumlah_halaman || null, deskripsi || null,
+        stok_tersedia, stok_total, sampul_buku || null, genre_id || null
+      ]);
+      
+      const bukuId = insertResult.rows[0].id;
+      
+      // Insert tags
+      if (Array.isArray(tag_ids) && tag_ids.length > 0) {
+        for (const tagId of tag_ids) {
+          await client.query(
+            `INSERT INTO buku_tags (buku_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [bukuId, tagId]
+          );
+        }
+      }
+      
+      return bukuId;
+    });
 
-	const row = db.prepare(`SELECT * FROM books WHERE id = ?`).get(createdId);
-	return NextResponse.json(mapBook(row), { status: 201 });
+    // Fetch created book with genre name
+    const result = await db.query(
+      `SELECT b.*, g.nama_genre 
+       FROM buku b 
+       LEFT JOIN genre g ON b.genre_id = g.id 
+       WHERE b.id = $1`,
+      [createdId]
+    );
+    
+    console.log('✅ Buku created:', result.rows[0].judul);
+    return NextResponse.json(result.rows[0], { status: 201 });
+  } catch (error) {
+    console.error('❌ Error creating buku:', error);
+    return NextResponse.json(
+      { message: 'Gagal menambah buku', error: error.message }, 
+      { status: 500 }
+    );
+  }
 }
 
 export async function PUT(req) {
-	const { ok } = requireRole(req, [ROLES.ADMIN]);
-	if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-	const db = getDb();
-	const body = await req.json();
-	const { id, title, author, genreId, stock, isApproved, tagIds } = body || {};
-	if (!id) return NextResponse.json({ message: 'id required' }, { status: 400 });
+  const { ok } = requireRole(req, [ROLES.ADMIN]);
+  if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+  
+  await initDb();
+  const db = getDb();
+  
+  try {
+    const body = await req.json();
+    const { id, tag_ids, nama_genre, ...updateFields } = body;
+    
+    if (!id) {
+      return NextResponse.json({ message: 'ID diperlukan' }, { status: 400 });
+    }
 
-	withTransaction(() => {
-		const current = db.prepare(`SELECT * FROM books WHERE id = ?`).get(id);
-		if (!current) throw new Error('Not found');
-		const next = {
-			title: title ?? current.title,
-			author: author ?? current.author,
-			genre_id: genreId ?? current.genre_id,
-			stock: typeof stock === 'number' ? stock : current.stock,
-			is_approved: typeof isApproved === 'boolean' ? (isApproved ? 1 : 0) : current.is_approved,
-		};
-		db.prepare(`UPDATE books SET title = @title, author = @author, genre_id = @genre_id, stock = @stock, is_approved = @is_approved WHERE id = @id`).run({ ...next, id });
-		if (Array.isArray(tagIds)) {
-			db.prepare(`DELETE FROM book_tags WHERE book_id = ?`).run(id);
-			const insertTag = db.prepare(`INSERT OR IGNORE INTO book_tags (book_id, tag_id) VALUES (?, ?)`);
-			for (const tagId of tagIds) insertTag.run(id, tagId);
-		}
-	});
+    await withTransaction(async (client) => {
+      // Check if book exists
+      const checkResult = await client.query(`SELECT * FROM buku WHERE id = $1`, [id]);
+      if (checkResult.rows.length === 0) {
+        throw new Error('Buku tidak ditemukan');
+      }
+      
+      // Build update query dynamically
+      const updates = [];
+      const values = [];
+      let paramCount = 0;
+      
+      Object.keys(updateFields).forEach(key => {
+        if (updateFields[key] !== undefined && key !== 'id') {
+          paramCount++;
+          updates.push(`${key} = $${paramCount}`);
+          values.push(updateFields[key]);
+        }
+      });
+      
+      if (updates.length > 0) {
+        updates.push(`updated_at = CURRENT_TIMESTAMP`);
+        paramCount++;
+        values.push(id);
+        
+        await client.query(
+          `UPDATE buku SET ${updates.join(', ')} WHERE id = $${paramCount}`,
+          values
+        );
+      }
+      
+      // Update tags if provided
+      if (Array.isArray(tag_ids)) {
+        await client.query(`DELETE FROM buku_tags WHERE buku_id = $1`, [id]);
+        for (const tagId of tag_ids) {
+          await client.query(
+            `INSERT INTO buku_tags (buku_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [id, tagId]
+          );
+        }
+      }
+    });
 
-	const row = db.prepare(`SELECT * FROM books WHERE id = ?`).get(id);
-	return NextResponse.json(mapBook(row));
+    // Fetch updated book
+    const result = await db.query(
+      `SELECT b.*, g.nama_genre 
+       FROM buku b 
+       LEFT JOIN genre g ON b.genre_id = g.id 
+       WHERE b.id = $1`,
+      [id]
+    );
+    
+    console.log('✅ Buku updated:', result.rows[0].judul);
+    return NextResponse.json(result.rows[0]);
+  } catch (error) {
+    console.error('❌ Error updating buku:', error);
+    return NextResponse.json(
+      { message: 'Gagal update buku', error: error.message }, 
+      { status: 500 }
+    );
+  }
 }
 
 export async function DELETE(req) {
-	const { ok } = requireRole(req, [ROLES.ADMIN]);
-	if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-	const db = getDb();
-	const { searchParams } = new URL(req.url);
-	const id = Number(searchParams.get('id'));
-	if (!id) return NextResponse.json({ message: 'id required' }, { status: 400 });
-	const info = db.prepare(`DELETE FROM books WHERE id = ?`).run(id);
-	if (info.changes === 0) return NextResponse.json({ message: 'Not found' }, { status: 404 });
-	return NextResponse.json({ success: true });
+  const { ok } = requireRole(req, [ROLES.ADMIN]);
+  if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+  
+  await initDb();
+  const db = getDb();
+  
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = Number(searchParams.get('id'));
+    
+    if (!id) {
+      return NextResponse.json({ message: 'ID diperlukan' }, { status: 400 });
+    }
+    
+    const result = await db.query(`DELETE FROM buku WHERE id = $1`, [id]);
+    
+    if (result.rowCount === 0) {
+      return NextResponse.json({ message: 'Buku tidak ditemukan' }, { status: 404 });
+    }
+    
+    console.log('✅ Buku deleted, ID:', id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('❌ Error deleting buku:', error);
+    return NextResponse.json(
+      { message: 'Gagal hapus buku', error: error.message }, 
+      { status: 500 }
+    );
+  }
 }
-
-
-
