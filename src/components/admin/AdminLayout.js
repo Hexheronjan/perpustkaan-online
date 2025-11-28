@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, BookOpen, Users, CheckSquare, Library, Menu, X, LogOut, Settings } from 'lucide-react';
+import { Home, BookOpen, Users, CheckSquare, Library, Menu, X, LogOut, Settings, Bookmark } from 'lucide-react';
 
 const AdminLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -16,6 +16,7 @@ const AdminLayout = ({ children }) => {
     { id: 'users', label: 'Manajemen User', icon: Users, path: '/admin/users' },
     { id: 'approval', label: 'Approval Buku', icon: CheckSquare, path: '/admin/approval' },
     { id: 'katalog', label: 'Katalog Buku', icon: Library, path: '/admin/katalog' },
+    { id: 'peminjaman', label: 'peminjaman', icon: Bookmark, path: '/admin/peminjaman' },
   ];
 
   return (

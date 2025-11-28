@@ -16,6 +16,7 @@ const StafLayout = ({ children }) => {
     { id: 'genre', label: 'Manajemen Genre', icon: Users, path: '/staf/genre' },
     { id: 'tags', label: 'Manajemen Tags', icon: Users, path: '/staf/tags' },
     { id: 'katalog', label: 'Katalog Buku', icon: Library, path: '/staf/katalog' },
+    { id: 'peminjaman', label: 'peminjaman', icon: BookOpen, path: '/staf/peminjaman' },
   ];
 
   return (
