@@ -1,5 +1,5 @@
 // src/middleware.js
-// Middleware untuk proteksi route berdasarkan role
+// FIXED: Visitor route is PUBLIC (no auth required)
 import { NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 
@@ -13,24 +13,27 @@ const ROLES = {
   ADMIN: 4
 };
 
-// Public routes (tidak perlu login)
+// ==========================================
+// PUBLIC ROUTES - NO AUTH REQUIRED
+// ==========================================
 const PUBLIC_ROUTES = [
   '/login',
   '/register',
-  '/Visitor',
-  '/api/visitor',
+  '/visitor',           // ✅ VISITOR IS PUBLIC
+  '/api/visitor',       // ✅ VISITOR API IS PUBLIC
   '/api/auth/login',
   '/api/auth/register',
   '/_next',
   '/favicon.ico',
-  '/public'
+  '/public',
+  '/',                  // ✅ ROOT IS PUBLIC (redirects to visitor)
 ];
 
-// Route permissions
+// Route permissions (ONLY for authenticated users)
 const ROUTE_PERMISSIONS = {
-  '/Admin': [ROLES.ADMIN],
-  '/Staf': [ROLES.STAF, ROLES.ADMIN],
-  '/Member': [ROLES.MEMBER, ROLES.STAF, ROLES.ADMIN],
+  '/admin': [ROLES.ADMIN],
+  '/staf': [ROLES.STAF, ROLES.ADMIN],
+  '/member': [ROLES.MEMBER, ROLES.STAF, ROLES.ADMIN],
   '/api/admin': [ROLES.ADMIN],
   '/api/staf': [ROLES.STAF, ROLES.ADMIN],
   '/api/member': [ROLES.MEMBER, ROLES.STAF, ROLES.ADMIN],
@@ -40,34 +43,48 @@ const ROUTE_PERMISSIONS = {
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
-  // Skip public routes
-  if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
+  console.log('🔍 Middleware checking:', pathname);
+
+  // ==========================================
+  // STEP 1: Check if route is PUBLIC
+  // ==========================================
+  const isPublicRoute = PUBLIC_ROUTES.some(route => 
+    pathname === route || pathname.startsWith(route)
+  );
+
+  if (isPublicRoute) {
+    console.log('✅ Public route, allowing access:', pathname);
     return NextResponse.next();
   }
 
-  // Get token from cookies
+  // ==========================================
+  // STEP 2: Not public - need authentication
+  // ==========================================
   const token = request.cookies.get('token')?.value;
 
-  // No token - redirect to login (except for visitor)
   if (!token) {
     console.log('⚠️  No token, redirecting to login:', pathname);
     const loginUrl = new URL('/login', request.url);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Verify token
+  // ==========================================
+  // STEP 3: Verify token
+  // ==========================================
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
     const userRole = payload.role_id;
 
-    console.log('✅ Middleware auth:', {
+    console.log('✅ Token verified:', {
       pathname,
       username: payload.username,
       role_id: userRole,
       role_name: userRole === 4 ? 'Admin' : userRole === 3 ? 'Staf' : userRole === 2 ? 'Member' : 'Unknown'
     });
 
-    // Check route permissions
+    // ==========================================
+    // STEP 4: Check route permissions
+    // ==========================================
     for (const [route, allowedRoles] of Object.entries(ROUTE_PERMISSIONS)) {
       if (pathname.startsWith(route)) {
         if (!allowedRoles.includes(userRole)) {
@@ -81,13 +98,13 @@ export async function middleware(request) {
           let redirectUrl;
           switch (userRole) {
             case ROLES.ADMIN:
-              redirectUrl = new URL('/Admin/dashboard', request.url);
+              redirectUrl = new URL('/admin/dashboard', request.url);
               break;
             case ROLES.STAF:
-              redirectUrl = new URL('/Staf/dashboard', request.url);
+              redirectUrl = new URL('/staf/dashboard', request.url);
               break;
             case ROLES.MEMBER:
-              redirectUrl = new URL('/Member/dashboard', request.url);
+              redirectUrl = new URL('/member/dashboard', request.url);
               break;
             default:
               redirectUrl = new URL('/login', request.url);
@@ -95,11 +112,12 @@ export async function middleware(request) {
           
           return NextResponse.redirect(redirectUrl);
         }
+        
+        console.log('✅ Authorized access:', pathname);
         break;
       }
     }
 
-    // Authorized
     return NextResponse.next();
 
   } catch (error) {
@@ -121,6 +139,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public folder
      */
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\..*|public).*)',
   ],
 };

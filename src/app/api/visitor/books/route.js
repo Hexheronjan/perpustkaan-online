@@ -1,5 +1,4 @@
 // src/app/api/visitor/books/route.js
-// FIXED VERSION - Public access, no login required
 import { NextResponse } from 'next/server';
 import { getDb, initDb } from '@/lib/db';
 
@@ -8,8 +7,7 @@ export async function GET(req) {
     await initDb();
     const db = getDb();
     
-    // Public endpoint - no auth required
-    // Return only approved books for visitors
+    // ✅ PUBLIC - No auth check
     const result = await db.query(`
       SELECT 
         b.id,
@@ -33,8 +31,8 @@ export async function GET(req) {
     `);
     
     console.log('✅ Visitor books fetched:', result.rows.length);
-    
     return NextResponse.json(result.rows);
+    
   } catch (error) {
     console.error('❌ Visitor Books API Error:', error);
     return NextResponse.json({
@@ -43,23 +41,4 @@ export async function GET(req) {
       error: error.message
     }, { status: 500 });
   }
-}
-
-// Block other methods
-export async function POST() {
-  return NextResponse.json({ 
-    message: 'Method Not Allowed. This is a read-only endpoint.' 
-  }, { status: 405 });
-}
-
-export async function PUT() {
-  return NextResponse.json({ 
-    message: 'Method Not Allowed. This is a read-only endpoint.' 
-  }, { status: 405 });
-}
-
-export async function DELETE() {
-  return NextResponse.json({ 
-    message: 'Method Not Allowed. This is a read-only endpoint.' 
-  }, { status: 405 });
 }

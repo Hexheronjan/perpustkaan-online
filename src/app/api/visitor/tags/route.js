@@ -1,5 +1,4 @@
 // src/app/api/visitor/tags/route.js
-// FIXED VERSION - Public access, no login required
 import { NextResponse } from 'next/server';
 import { getDb, initDb } from '@/lib/db';
 
@@ -8,7 +7,7 @@ export async function GET(req) {
     await initDb();
     const db = getDb();
     
-    // Public endpoint - no auth required
+    // ✅ PUBLIC - No auth check
     const result = await db.query(`
       SELECT 
         id,
@@ -19,8 +18,8 @@ export async function GET(req) {
     `);
     
     console.log('✅ Visitor tags fetched:', result.rows.length);
-    
     return NextResponse.json(result.rows);
+    
   } catch (error) {
     console.error('❌ Visitor Tags API Error:', error);
     return NextResponse.json({

@@ -11,7 +11,7 @@ export default function HomePage() {
   useEffect(() => {
     // Redirect langsung ke Visitor page
     console.log('🚀 Redirecting to Visitor...');
-    router.push('/Visitor');
+    router.push('/visitor');
   }, [router]);
 
   // Loading state sementara redirect
