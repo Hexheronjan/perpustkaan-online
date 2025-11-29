@@ -28,11 +28,15 @@ export default function ManajemenBukuPage() {
     sampul_buku: '',
     genre_id: null,
   });
+  const [genres, setGenres] = useState([]);
+  const [genresLoading, setGenresLoading] = useState(false);
+  const [genresError, setGenresError] = useState(null);
 
   const user = getUser();
 
   useEffect(() => {
-    fetchBooks(); // Ini sudah fetch approved + pending sekaligus
+    fetchBooks();
+    fetchGenres();
   }, []);
 
   async function fetchBooks() {
@@ -43,36 +47,19 @@ export default function ManajemenBukuPage() {
       
       console.log('📚 API Response:', data);
       
-      // Handle berbagai format response
-      if (data && data.success === true) {
-        // Format baru dengan success flag
-        if (data.approved && data.pending) {
-          setBooks(data.approved);
-          setPendingBooks(data.pending);
-          console.log('✅ Format baru - Approved:', data.approved.length, 'Pending:', data.pending.length);
-        } else if (data.all && Array.isArray(data.all)) {
-          // Jika ada property 'all'
-          const approved = data.all.filter(b => b.is_approved === true);
-          const pending = data.all.filter(b => b.is_approved === false);
-          setBooks(approved);
-          setPendingBooks(pending);
-          console.log('✅ Format all - Approved:', approved.length, 'Pending:', pending.length);
-        }
-      } else if (Array.isArray(data)) {
-        // Format lama: array langsung
-        // Pisahkan berdasarkan is_approved dan source_table
-        const approved = data.filter(b => 
-          b.is_approved === true || 
-          b.source_table === 'approved'
-        );
-        const pending = data.filter(b => 
-          b.is_approved === false || 
-          b.source_table === 'pending' ||
-          b.status === 'pending'
-        );
+      if (Array.isArray(data)) {
+        // Split berdasarkan status (bukan is_approved lagi)
+        const approved = data.filter(b => b.status === 'approved');
+        const pending = data.filter(b => b.status === 'pending');
+        const rejected = data.filter(b => b.status === 'rejected');
+        
         setBooks(approved);
-        setPendingBooks(pending);
-        console.log('✅ Format array - Approved:', approved.length, 'Pending:', pending.length);
+        setPendingBooks([...pending, ...rejected]); // Gabung pending & rejected
+        
+        console.log('✅ Status distribution:');
+        console.log('   - Approved:', approved.length);
+        console.log('   - Pending:', pending.length);
+        console.log('   - Rejected:', rejected.length);
       } else {
         console.warn('⚠️ Unexpected response format:', data);
         setBooks([]);
@@ -91,6 +78,26 @@ export default function ManajemenBukuPage() {
   async function fetchPendingBooks() {
     // Tidak perlu fetch terpisah lagi karena sudah include di fetchBooks()
     console.log('ℹ️ Pending books sudah di-fetch bersamaan dengan approved books');
+  }
+
+  async function fetchGenres() {
+    try {
+      setGenresLoading(true);
+      setGenresError(null);
+      const data = await apiFetch('/api/staf/genre');
+      if (Array.isArray(data)) {
+        setGenres(data);
+      } else {
+        console.warn('⚠️ Unexpected genre response format:', data);
+        setGenres([]);
+      }
+    } catch (err) {
+      console.error('❌ Error fetching genres:', err);
+      setGenresError(err.message || 'Gagal memuat genre');
+      setGenres([]);
+    } finally {
+      setGenresLoading(false);
+    }
   }
 
   function openAddModal() {
@@ -278,16 +285,17 @@ export default function ManajemenBukuPage() {
     }
   }
 
-  async function handleCancelPending(bookId) {
+  async function handleCancelPending(book) {
     if (!confirm('Yakin ingin membatalkan/hapus buku ini?')) return;
     
     try {
-      // Hapus langsung dari tabel buku (bukan buku_pending)
-      await apiFetch(`/api/staf/buku?id=${bookId}&user_id=${user?.id}`, {
+      // Sekarang semua dari tabel yang sama, cukup panggil 1 API
+      await apiFetch(`/api/staf/buku?id=${book.id}&user_id=${user?.id}`, {
         method: 'DELETE'
       });
+      
       alert('✅ Buku berhasil dihapus');
-      fetchBooks(); // Refresh
+      fetchBooks();
     } catch (err) {
       console.error('❌ Error deleting book:', err);
       alert('❌ Gagal menghapus buku: ' + err.message);
@@ -499,11 +507,11 @@ export default function ManajemenBukuPage() {
                           })}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {getStatusBadge('pending')}
+                          {getStatusBadge(book.status)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <button
-                            onClick={() => handleCancelPending(book.id)}
+                            onClick={() => handleCancelPending(book)}
                             className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm"
                           >
                             🗑️ Hapus
@@ -634,6 +642,44 @@ export default function ManajemenBukuPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Genre
+                      </label>
+                      <select
+                        name="genre_id"
+                        value={formData.genre_id ?? ''}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      >
+                        <option value="" disabled>
+                          {genresLoading ? 'Memuat genre...' : 'Pilih genre'}
+                        </option>
+                        {genres.map(genre => (
+                          <option key={genre.id} value={genre.id}>
+                            {genre.nama_genre}
+                          </option>
+                        ))}
+                      </select>
+                      {genresError && (
+                        <p className="text-xs text-red-600 mt-1">
+                          ⚠️ {genresError}.{' '}
+                          <button
+                            type="button"
+                            onClick={fetchGenres}
+                            className="underline"
+                          >
+                            Coba lagi
+                          </button>
+                        </p>
+                      )}
+                      {!genresError && !genresLoading && genres.length === 0 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Tidak ada genre tersedia. Tambahkan genre terlebih dahulu.
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Tahun Terbit
                       </label>
                       <input
@@ -655,6 +701,20 @@ export default function ManajemenBukuPage() {
                         value={formData.isbn}
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Jumlah Halaman
+                      </label>
+                      <input
+                        type="number"
+                        name="jumlah_halaman"
+                        value={formData.jumlah_halaman}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        min="0"
                       />
                     </div>
 
