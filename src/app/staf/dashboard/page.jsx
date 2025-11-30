@@ -85,61 +85,53 @@ export default function StafDashboard() {
   }, []);
 
   const fetchDashboardData = async () => {
-    try {
-      console.log('🔄 Fetching dashboard data...');
-      
-      // Fetch buku
-      console.log('📚 Fetching buku...');
-      const bukuRes = await fetch('/api/staf/buku');
-      console.log('Buku response status:', bukuRes.status);
-      const bukuData = bukuRes.ok ? await bukuRes.json() : [];
-      console.log('Buku data:', bukuData);
-      
-      // Fetch users
-      console.log('👥 Fetching users...');
-      const usersRes = await fetch('/api/staf/users');
-      console.log('Users response status:', usersRes.status);
-      const usersData = usersRes.ok ? await usersRes.json() : [];
-      console.log('Users data:', usersData);
-      
-      // Fetch peminjaman aktif
-      console.log('📖 Fetching peminjaman...');
-      const peminjamanRes = await fetch('/api/staf/peminjaman?status=dipinjam');
-      console.log('Peminjaman response status:', peminjamanRes.status);
-      const peminjamanData = peminjamanRes.ok ? await peminjamanRes.json() : [];
-      console.log('Peminjaman data:', peminjamanData);
-      
-      // Fetch buku pending approval
-      console.log('⏳ Fetching pending books...');
-      const pendingRes = await fetch('/api/staf/buku-pending?status=pending');
-      console.log('Pending response status:', pendingRes.status);
-      const pendingData = pendingRes.ok ? await pendingRes.json() : [];
-      console.log('Pending data:', pendingData);
+  try {
+    console.log('📄 Fetching dashboard data...');
+    
+    // Fetch buku (semua status)
+    const bukuRes = await fetch('/api/staf/buku');
+    const bukuData = bukuRes.ok ? await bukuRes.json() : [];
+    
+    // Fetch users
+    const usersRes = await fetch('/api/staf/users');
+    const usersData = usersRes.ok ? await usersRes.json() : [];
+    
+    // Fetch peminjaman aktif
+    const peminjamanRes = await fetch('/api/peminjaman?status=dipinjam');
+    const peminjamanData = peminjamanRes.ok ? await peminjamanRes.json() : [];
 
-      const newStats = {
-        totalBuku: Array.isArray(bukuData) ? bukuData.length : 0,
-        totalUsers: Array.isArray(usersData) ? usersData.length : 0,
-        bukuDipinjam: Array.isArray(peminjamanData) ? peminjamanData.length : 0,
-        bukuPending: Array.isArray(pendingData) ? pendingData.length : 0
-      };
+    const newStats = {
+      totalBuku: Array.isArray(bukuData) 
+        ? bukuData.filter(b => b.status === 'approved').length 
+        : 0,
+      totalUsers: Array.isArray(usersData) ? usersData.length : 0,
+      bukuDipinjam: Array.isArray(peminjamanData) ? peminjamanData.length : 0,
+      bukuPending: Array.isArray(bukuData) 
+        ? bukuData.filter(b => b.status === 'pending').length 
+        : 0
+    };
 
-      console.log('✅ Final stats:', newStats);
-      setStats(newStats);
-      setPendingBooks(Array.isArray(pendingData) ? pendingData.slice(0, 3) : []);
-      
-      setLoading(false);
-    } catch (error) {
-      console.error('❌ Error fetching dashboard data:', error);
-      alert('Error loading dashboard data. Check console for details.');
-      setStats({
-        totalBuku: 0,
-        totalUsers: 0,
-        bukuDipinjam: 0,
-        bukuPending: 0
-      });
-      setLoading(false);
-    }
-  };
+    console.log('✅ Final stats:', newStats);
+    setStats(newStats);
+    
+    // Set pending books untuk display
+    const pendingBooksFiltered = Array.isArray(bukuData) 
+      ? bukuData.filter(b => b.status === 'pending').slice(0, 3)
+      : [];
+    setPendingBooks(pendingBooksFiltered);
+    
+    setLoading(false);
+  } catch (error) {
+    console.error('❌ Error fetching dashboard data:', error);
+    setStats({
+      totalBuku: 0,
+      totalUsers: 0,
+      bukuDipinjam: 0,
+      bukuPending: 0
+    });
+    setLoading(false);
+  }
+};
 
   const recentActivities = [
     { icon: CheckCircle, title: 'Buku "Laskar Pelangi" dikembalikan', time: '5 menit yang lalu', color: 'bg-green-500' },

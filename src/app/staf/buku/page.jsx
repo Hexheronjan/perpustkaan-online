@@ -40,65 +40,40 @@ export default function ManajemenBukuPage() {
   }, []);
 
   async function fetchBooks() {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await apiFetch(`/api/staf/buku?user_id=${user?.id || ''}`);
+  try {
+    setLoading(true);
+    setError(null);
+    const data = await apiFetch(`/api/staf/buku?user_id=${user?.id || ''}`);
+    
+    console.log('📚 API Response:', data);
+    
+    if (Array.isArray(data)) {
+      // Split berdasarkan status
+      const approved = data.filter(b => b.status === 'approved');
+      const pending = data.filter(b => b.status === 'pending');
+      const rejected = data.filter(b => b.status === 'rejected');
       
-      console.log('📚 API Response:', data);
+      setBooks(approved);
+      setPendingBooks([...pending, ...rejected]);
       
-      if (Array.isArray(data)) {
-        // Split berdasarkan status (bukan is_approved lagi)
-        const approved = data.filter(b => b.status === 'approved');
-        const pending = data.filter(b => b.status === 'pending');
-        const rejected = data.filter(b => b.status === 'rejected');
-        
-        setBooks(approved);
-        setPendingBooks([...pending, ...rejected]); // Gabung pending & rejected
-        
-        console.log('✅ Status distribution:');
-        console.log('   - Approved:', approved.length);
-        console.log('   - Pending:', pending.length);
-        console.log('   - Rejected:', rejected.length);
-      } else {
-        console.warn('⚠️ Unexpected response format:', data);
-        setBooks([]);
-        setPendingBooks([]);
-      }
-    } catch (err) {
-      console.error('❌ Error fetching books:', err);
-      setError(err.message || 'Failed to fetch books');
+      console.log('✅ Status distribution:');
+      console.log('   - Approved:', approved.length);
+      console.log('   - Pending:', pending.length);
+      console.log('   - Rejected:', rejected.length);
+    } else {
+      console.warn('⚠️ Unexpected response format:', data);
       setBooks([]);
       setPendingBooks([]);
-    } finally {
-      setLoading(false);
     }
+  } catch (err) {
+    console.error('❌ Error fetching books:', err);
+    setError(err.message || 'Failed to fetch books');
+    setBooks([]);
+    setPendingBooks([]);
+  } finally {
+    setLoading(false);
   }
-
-  async function fetchPendingBooks() {
-    // Tidak perlu fetch terpisah lagi karena sudah include di fetchBooks()
-    console.log('ℹ️ Pending books sudah di-fetch bersamaan dengan approved books');
-  }
-
-  async function fetchGenres() {
-    try {
-      setGenresLoading(true);
-      setGenresError(null);
-      const data = await apiFetch('/api/staf/genre');
-      if (Array.isArray(data)) {
-        setGenres(data);
-      } else {
-        console.warn('⚠️ Unexpected genre response format:', data);
-        setGenres([]);
-      }
-    } catch (err) {
-      console.error('❌ Error fetching genres:', err);
-      setGenresError(err.message || 'Gagal memuat genre');
-      setGenres([]);
-    } finally {
-      setGenresLoading(false);
-    }
-  }
+}
 
   function openAddModal() {
     setModalMode('add');
