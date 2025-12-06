@@ -5,7 +5,7 @@ import { requireRole, ROLES } from '@/lib/roles';
 initDb();
 
 export async function GET(req) {
-	const { ok } = requireRole(req, [ROLES.MEMBER, ROLES.ADMIN]);
+	const { ok } = await requireRole(req, [ROLES.MEMBER, ROLES.ADMIN]);
 	if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 	const db = getDb();
 	const result = await db.query(`SELECT * FROM genre ORDER BY nama_genre`);

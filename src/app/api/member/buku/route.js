@@ -24,29 +24,19 @@ function mapBuku(row) {
 
 export async function GET(req) {
 	try {
-		const { ok } = requireRole(req, [ROLES.MEMBER, ROLES.ADMIN]);
+		const { ok } = await requireRole(req, [ROLES.MEMBER, ROLES.ADMIN]);
 		if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-		
+
 		await initDb();
 		const db = getDb();
-		
-		// Check if is_approved column exists
-		const columns = await db.query(`
-			SELECT column_name 
-			FROM information_schema.columns 
-			WHERE table_name = 'buku' AND column_name = 'is_approved'
+
+		// Filter only approved books
+		const result = await db.query(`
+			SELECT * FROM buku 
+			WHERE status = 'approved'
+			ORDER BY created_at DESC
 		`);
-		
-		const hasIsApproved = columns.rows.length > 0;
-		let result;
-		
-		if (hasIsApproved) {
-			result = await db.query(`SELECT * FROM buku WHERE is_approved = true`);
-		} else {
-			// Fallback: return all books if is_approved column doesn't exist
-			result = await db.query(`SELECT * FROM buku`);
-		}
-		
+
 		return NextResponse.json(result.rows.map(mapBuku));
 	} catch (error) {
 		console.error('Member Books API Error:', error);
@@ -61,7 +51,7 @@ export async function GET(req) {
 // Member role can only view books, not create them directly
 // They can borrow books via /api/member/peminjaman
 export async function POST() {
-	return NextResponse.json({ 
-		message: 'Method Not Allowed. Member role can only view books. Use /api/member/peminjaman to borrow books.' 
+	return NextResponse.json({
+		message: 'Method Not Allowed. Member role can only view books. Use /api/member/peminjaman to borrow books.'
 	}, { status: 405 });
 }

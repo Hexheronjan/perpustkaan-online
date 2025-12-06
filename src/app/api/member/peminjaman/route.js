@@ -19,7 +19,7 @@ function mapPeminjaman(row) {
 }
 
 export async function GET(req) {
-	const { ok } = requireRole(req, [ROLES.MEMBER, ROLES.ADMIN]);
+	const { ok } = await requireRole(req, [ROLES.MEMBER, ROLES.ADMIN]);
 	if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 
 	await initDb();
@@ -42,7 +42,7 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-	const { ok } = requireRole(req, [ROLES.MEMBER, ROLES.ADMIN]);
+	const { ok } = await requireRole(req, [ROLES.MEMBER, ROLES.ADMIN]);
 	if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 
 	await initDb();
@@ -51,15 +51,20 @@ export async function POST(req) {
 	const {
 		user_id,
 		buku_id,
-		tanggal_kembali_target,
+		durasi_hari = 7,
 		catatan
 	} = body || {};
 
-	if (!user_id || !buku_id || !tanggal_kembali_target) {
+	if (!user_id || !buku_id) {
 		return NextResponse.json({
-			message: 'user_id, buku_id, dan tanggal_kembali_target diperlukan'
+			message: 'user_id dan buku_id diperlukan'
 		}, { status: 400 });
 	}
+
+	// Calculate tanggal kembali target
+	const tanggalKembaliTarget = new Date();
+	tanggalKembaliTarget.setDate(tanggalKembaliTarget.getDate() + durasi_hari);
+	const tanggal_kembali_target = tanggalKembaliTarget.toISOString();
 
 	let peminjamanId;
 	try {
@@ -96,8 +101,63 @@ export async function POST(req) {
 }
 
 export async function PUT(req) {
-	// Member tidak bisa mengubah status peminjaman, hanya Admin yang bisa
-	return NextResponse.json({
-		message: 'Method Not Allowed. Member role can only borrow books (POST). Only Admin can update peminjaman status.'
-	}, { status: 405 });
+	const { ok } = await requireRole(req, [ROLES.MEMBER]);
+	if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+
+	await initDb();
+	const db = getDb();
+
+	try {
+		const body = await req.json();
+		const { id, user_id } = body;
+
+		if (!id || !user_id) {
+			return NextResponse.json({ message: 'ID peminjaman dan user_id diperlukan' }, { status: 400 });
+		}
+
+		// Get current peminjaman
+		const currentResult = await db.query(
+			`SELECT * FROM peminjaman WHERE id = $1 AND user_id = $2`,
+			[id, user_id]
+		);
+
+		if (currentResult.rows.length === 0) {
+			return NextResponse.json({ message: 'Peminjaman tidak ditemukan atau bukan milik Anda' }, { status: 404 });
+		}
+
+		const current = currentResult.rows[0];
+
+		if (current.status !== 'dipinjam' && current.status !== 'terlambat') {
+			return NextResponse.json({ message: 'Hanya buku yang sedang dipinjam atau terlambat yang bisa dikembalikan' }, { status: 400 });
+		}
+
+		await withTransaction(async (client) => {
+			// Update status peminjaman
+			await client.query(`
+				UPDATE peminjaman 
+				SET status = 'dikembalikan',
+					tanggal_kembali_aktual = CURRENT_TIMESTAMP,
+					updated_at = CURRENT_TIMESTAMP
+				WHERE id = $1
+			`, [id]);
+
+			// Kembalikan stok buku
+			await client.query(
+				`UPDATE buku SET stok_tersedia = stok_tersedia + 1 WHERE id = $1`,
+				[current.buku_id]
+			);
+		});
+
+		return NextResponse.json({
+			success: true,
+			message: 'Buku berhasil dikembalikan'
+		});
+
+	} catch (error) {
+		console.error('❌ Error returning book:', error);
+		return NextResponse.json({
+			message: 'Gagal mengembalikan buku',
+			error: error.message
+		}, { status: 500 });
+	}
 }

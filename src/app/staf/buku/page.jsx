@@ -40,40 +40,49 @@ export default function ManajemenBukuPage() {
   }, []);
 
   async function fetchBooks() {
-  try {
-    setLoading(true);
-    setError(null);
-    const data = await apiFetch(`/api/staf/buku?user_id=${user?.id || ''}`);
-    
-    console.log('📚 API Response:', data);
-    
-    if (Array.isArray(data)) {
-      // Split berdasarkan status
-      const approved = data.filter(b => b.status === 'approved');
-      const pending = data.filter(b => b.status === 'pending');
-      const rejected = data.filter(b => b.status === 'rejected');
-      
-      setBooks(approved);
-      setPendingBooks([...pending, ...rejected]);
-      
-      console.log('✅ Status distribution:');
-      console.log('   - Approved:', approved.length);
-      console.log('   - Pending:', pending.length);
-      console.log('   - Rejected:', rejected.length);
-    } else {
-      console.warn('⚠️ Unexpected response format:', data);
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await apiFetch(`/api/staf/buku?user_id=${user?.id || ''}`);
+
+      if (Array.isArray(data)) {
+        const approved = data.filter(b => b.status === 'approved');
+        const pending = data.filter(b => b.status === 'pending');
+        const rejected = data.filter(b => b.status === 'rejected');
+
+        setBooks(approved);
+        setPendingBooks([...pending, ...rejected]);
+      } else {
+        setBooks([]);
+        setPendingBooks([]);
+      }
+    } catch (err) {
+      console.error('❌ Error fetching books:', err);
+      setError(err.message || 'Failed to fetch books');
       setBooks([]);
       setPendingBooks([]);
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error('❌ Error fetching books:', err);
-    setError(err.message || 'Failed to fetch books');
-    setBooks([]);
-    setPendingBooks([]);
-  } finally {
-    setLoading(false);
   }
-}
+
+  async function fetchGenres() {
+    try {
+      setGenresLoading(true);
+      setGenresError(null);
+      const data = await apiFetch('/api/staf/genre');
+      if (Array.isArray(data)) {
+        setGenres(data);
+      } else {
+        setGenres([]);
+      }
+    } catch (err) {
+      console.error('❌ Error fetching genres:', err);
+      setGenresError('Gagal memuat genre');
+    } finally {
+      setGenresLoading(false);
+    }
+  }
 
   function openAddModal() {
     setModalMode('add');
@@ -202,7 +211,7 @@ export default function ManajemenBukuPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    
+
     try {
       const payload = {
         ...formData,
@@ -223,9 +232,9 @@ export default function ManajemenBukuPage() {
           'Admin harus menyetujui perubahan Anda sebelum buku tampil kembali di katalog.\n\n' +
           'Lanjutkan edit?'
         );
-        
+
         if (!confirmEdit) return;
-        
+
         await apiFetch('/api/staf/buku', {
           method: 'PUT',
           body: JSON.stringify({
@@ -236,7 +245,7 @@ export default function ManajemenBukuPage() {
         alert('✅ Buku berhasil diupdate!\n\n⏳ Status buku sekarang: PENDING APPROVAL\nAdmin akan mereview perubahan Anda.');
         fetchBooks(); // Refresh
       }
-      
+
       closeModal();
       fetchBooks(); // Refresh semua data (approved + pending)
     } catch (err) {
@@ -247,7 +256,7 @@ export default function ManajemenBukuPage() {
 
   async function handleDelete(bookId) {
     if (!confirm('Yakin ingin menghapus buku ini?')) return;
-    
+
     try {
       await apiFetch(`/api/staf/buku?id=${bookId}&user_id=${user?.id}`, {
         method: 'DELETE'
@@ -262,13 +271,13 @@ export default function ManajemenBukuPage() {
 
   async function handleCancelPending(book) {
     if (!confirm('Yakin ingin membatalkan/hapus buku ini?')) return;
-    
+
     try {
       // Sekarang semua dari tabel yang sama, cukup panggil 1 API
       await apiFetch(`/api/staf/buku?id=${book.id}&user_id=${user?.id}`, {
         method: 'DELETE'
       });
-      
+
       alert('✅ Buku berhasil dihapus');
       fetchBooks();
     } catch (err) {
@@ -283,9 +292,9 @@ export default function ManajemenBukuPage() {
       approved: { bg: 'bg-green-100', text: 'text-green-800', icon: '✅', label: 'Disetujui' },
       rejected: { bg: 'bg-red-100', text: 'text-red-800', icon: '❌', label: 'Ditolak' }
     };
-    
+
     const config = statusConfig[status] || statusConfig.pending;
-    
+
     return (
       <span className={`px-3 py-1 text-xs font-semibold rounded-full ${config.bg} ${config.text}`}>
         {config.icon} {config.label}
@@ -330,21 +339,19 @@ export default function ManajemenBukuPage() {
           <div className="flex border-b">
             <button
               onClick={() => setActiveTab('approved')}
-              className={`px-6 py-4 font-semibold ${
-                activeTab === 'approved'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
+              className={`px-6 py-4 font-semibold ${activeTab === 'approved'
+                ? 'border-b-2 border-blue-600 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+                }`}
             >
               ✅ Buku Approved ({books.length})
             </button>
             <button
               onClick={() => setActiveTab('pending')}
-              className={`px-6 py-4 font-semibold ${
-                activeTab === 'pending'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
+              className={`px-6 py-4 font-semibold ${activeTab === 'pending'
+                ? 'border-b-2 border-blue-600 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+                }`}
             >
               ⏳ Ajuan Saya ({pendingBooks.length})
             </button>
@@ -358,7 +365,7 @@ export default function ManajemenBukuPage() {
             <div className="px-6 py-4 bg-gray-50 border-b">
               <h2 className="text-xl font-bold text-gray-800">Daftar Buku Approved</h2>
             </div>
-            
+
             {books.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
                 <p className="text-xl mb-2">🔭 Tidak ada buku approved</p>
@@ -381,8 +388,8 @@ export default function ManajemenBukuPage() {
                       <tr key={book.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                         <td className="px-6 py-4">
                           {book.sampul_buku ? (
-                            <Image 
-                              src={book.sampul_buku} 
+                            <Image
+                              src={book.sampul_buku}
                               alt={book.judul}
                               width={60}
                               height={80}
@@ -432,7 +439,7 @@ export default function ManajemenBukuPage() {
               <h2 className="text-xl font-bold text-gray-800">Buku Pending Approval</h2>
               <p className="text-sm text-gray-600 mt-1">Buku yang menunggu persetujuan admin</p>
             </div>
-            
+
             {pendingBooks.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
                 <p className="text-xl mb-2">🔭 Tidak ada buku pending</p>
@@ -456,8 +463,8 @@ export default function ManajemenBukuPage() {
                       <tr key={book.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                         <td className="px-6 py-4">
                           {book.sampul_buku ? (
-                            <Image 
-                              src={book.sampul_buku} 
+                            <Image
+                              src={book.sampul_buku}
                               alt={book.judul}
                               width={60}
                               height={80}
@@ -517,7 +524,7 @@ export default function ManajemenBukuPage() {
                 ×
               </button>
             </div>
-            
+
             <form onSubmit={handleSubmit} className="p-6">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left: Image Upload */}
@@ -525,7 +532,7 @@ export default function ManajemenBukuPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Sampul Buku
                   </label>
-                  
+
                   {imagePreview ? (
                     <div className="relative">
                       <Image
@@ -562,7 +569,7 @@ export default function ManajemenBukuPage() {
                       </p>
                     </div>
                   )}
-                  
+
                   {uploading && (
                     <div className="mt-2 text-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>

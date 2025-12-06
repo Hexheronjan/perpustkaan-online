@@ -3,15 +3,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Clock, CheckCircle, XCircle, AlertCircle, 
-  User, BookOpen, Calendar, DollarSign, 
-  Filter, Search, X 
+import {
+  Clock, CheckCircle, XCircle, AlertCircle,
+  User, BookOpen, Calendar, DollarSign,
+  Filter, Search, X
 } from 'lucide-react';
 
 const Modal = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
-  
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
@@ -33,6 +33,7 @@ const StatusBadge = ({ status }) => {
     dipinjam: { color: 'bg-blue-100 text-blue-700', icon: BookOpen, text: 'Sedang Dipinjam' },
     dikembalikan: { color: 'bg-green-100 text-green-700', icon: CheckCircle, text: 'Dikembalikan' },
     rejected: { color: 'bg-red-100 text-red-700', icon: XCircle, text: 'Ditolak' },
+    ditolak: { color: 'bg-red-100 text-red-700', icon: XCircle, text: 'Ditolak' },
   };
 
   const config = statusConfig[status] || statusConfig.pending;
@@ -54,23 +55,23 @@ const PeminjamanDetail = ({ peminjaman, onAction, onClose }) => {
 
   const calculateDurasi = () => {
     if (!peminjaman.tanggal_pinjam) return 'Belum dipinjam';
-    
+
     const start = new Date(peminjaman.tanggal_pinjam);
-    const end = peminjaman.tanggal_kembali_aktual 
+    const end = peminjaman.tanggal_kembali_aktual
       ? new Date(peminjaman.tanggal_kembali_aktual)
       : new Date();
-    
+
     const diffDays = Math.floor((end - start) / (1000 * 60 * 60 * 24));
     return `${diffDays} hari`;
   };
 
   const calculateSisaWaktu = () => {
     if (peminjaman.status !== 'dipinjam') return null;
-    
+
     const target = new Date(peminjaman.tanggal_kembali_target);
     const now = new Date();
     const diffDays = Math.ceil((target - now) / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 0) {
       return {
         text: `Terlambat ${Math.abs(diffDays)} hari`,
@@ -137,8 +138,8 @@ const PeminjamanDetail = ({ peminjaman, onAction, onClose }) => {
           <h3 className="text-sm font-medium text-gray-500 mb-2">Informasi Buku</h3>
           <div className="bg-gray-50 p-4 rounded-lg">
             {peminjaman.sampul_buku && (
-              <img 
-                src={peminjaman.sampul_buku} 
+              <img
+                src={peminjaman.sampul_buku}
                 alt={peminjaman.buku_judul}
                 className="w-full h-32 object-cover rounded-lg mb-3"
                 onError={(e) => e.target.style.display = 'none'}
@@ -153,7 +154,7 @@ const PeminjamanDetail = ({ peminjaman, onAction, onClose }) => {
       {/* Timeline Info */}
       <div className="bg-gray-50 p-4 rounded-lg space-y-3">
         <h3 className="text-sm font-medium text-gray-700 mb-3">Timeline Peminjaman</h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <p className="text-xs text-gray-500 mb-1">Tanggal Request</p>
@@ -239,26 +240,24 @@ const PeminjamanDetail = ({ peminjaman, onAction, onClose }) => {
       {peminjaman.status === 'pending' && (
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-gray-700">Approval Action</h3>
-          
+
           <div className="flex gap-3">
             <button
               onClick={() => setAction('approve')}
-              className={`flex-1 py-3 rounded-lg font-medium transition-colors ${
-                action === 'approve'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-green-50 text-green-700 hover:bg-green-100'
-              }`}
+              className={`flex-1 py-3 rounded-lg font-medium transition-colors ${action === 'approve'
+                ? 'bg-green-600 text-white'
+                : 'bg-green-50 text-green-700 hover:bg-green-100'
+                }`}
             >
               <CheckCircle className="inline mr-2" size={18} />
               Approve
             </button>
             <button
               onClick={() => setAction('reject')}
-              className={`flex-1 py-3 rounded-lg font-medium transition-colors ${
-                action === 'reject'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-red-50 text-red-700 hover:bg-red-100'
-              }`}
+              className={`flex-1 py-3 rounded-lg font-medium transition-colors ${action === 'reject'
+                ? 'bg-red-600 text-white'
+                : 'bg-red-50 text-red-700 hover:bg-red-100'
+                }`}
             >
               <XCircle className="inline mr-2" size={18} />
               Reject
@@ -291,7 +290,7 @@ const PeminjamanDetail = ({ peminjaman, onAction, onClose }) => {
       {peminjaman.status === 'dipinjam' && (
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-gray-700">Pengembalian Buku</h3>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Denda (Rp)
@@ -358,13 +357,13 @@ export default function ApprovalPeminjamanPage() {
 
   const fetchPeminjaman = async () => {
     try {
-      const url = filterStatus === 'all' 
+      const url = filterStatus === 'all'
         ? '/api/peminjaman'
         : `/api/peminjaman?status=${filterStatus}`;
-      
+
       const response = await fetch(url);
       const data = await response.json();
-      
+
       console.log('Peminjaman data:', data);
       setPeminjaman(Array.isArray(data) ? data : []);
       setLoading(false);
@@ -396,11 +395,11 @@ export default function ApprovalPeminjamanPage() {
   };
 
   const filteredPeminjaman = peminjaman.filter(p => {
-    const matchesSearch = 
+    const matchesSearch =
       p.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.nama_lengkap?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.buku_judul?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     return matchesSearch;
   });
 

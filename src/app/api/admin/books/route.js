@@ -6,55 +6,55 @@ import { getRoleFromRequest, requireRole, ROLES } from '@/lib/roles';
 
 export async function GET(req) {
   await initDb();
-  const role = getRoleFromRequest(req);
+  const role = await getRoleFromRequest(req);
   const db = getDb();
-  
+
   try {
     // Admin dan Staf bisa lihat semua buku termasuk yang belum approved
     const includeUnapproved = role === ROLES.ADMIN || role === ROLES.STAF;
-    
+
     const query = includeUnapproved
       ? `SELECT b.*, g.nama_genre FROM buku b LEFT JOIN genre g ON b.genre_id = g.id ORDER BY b.created_at DESC`
       : `SELECT b.*, g.nama_genre FROM buku b LEFT JOIN genre g ON b.genre_id = g.id WHERE b.is_approved = true ORDER BY b.created_at DESC`;
-    
+
     const result = await db.query(query);
     return NextResponse.json(result.rows);
   } catch (error) {
     console.error('❌ Error fetching books:', error);
-    return NextResponse.json({ 
-      message: 'Failed to fetch books', 
-      error: error.message 
+    return NextResponse.json({
+      message: 'Failed to fetch books',
+      error: error.message
     }, { status: 500 });
   }
 }
 
 export async function POST(req) {
-  const { ok } = requireRole(req, [ROLES.ADMIN]);
+  const { ok } = await requireRole(req, [ROLES.ADMIN]);
   if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-  
+
   await initDb();
   const db = getDb();
-  
+
   try {
     const body = await req.json();
-    const { 
-      judul, 
-      penulis, 
+    const {
+      judul,
+      penulis,
       penerbit,
       tahun_terbit,
       isbn,
       jumlah_halaman,
       deskripsi,
-      stok_tersedia = 0, 
+      stok_tersedia = 0,
       stok_total = 0,
       sampul_buku,
-      genre_id, 
-      tag_ids = [] 
+      genre_id,
+      tag_ids = []
     } = body;
-    
+
     if (!judul || !penulis) {
-      return NextResponse.json({ 
-        message: 'Judul dan penulis wajib diisi' 
+      return NextResponse.json({
+        message: 'Judul dan penulis wajib diisi'
       }, { status: 400 });
     }
 
@@ -71,9 +71,9 @@ export async function POST(req) {
         isbn || null, jumlah_halaman || null, deskripsi || null,
         stok_tersedia, stok_total, sampul_buku || null, genre_id || null
       ]);
-      
+
       const bukuId = insertResult.rows[0].id;
-      
+
       // Insert tags
       if (Array.isArray(tag_ids) && tag_ids.length > 0) {
         for (const tagId of tag_ids) {
@@ -83,7 +83,7 @@ export async function POST(req) {
           );
         }
       }
-      
+
       return bukuId;
     });
 
@@ -95,29 +95,29 @@ export async function POST(req) {
        WHERE b.id = $1`,
       [createdId]
     );
-    
+
     console.log('✅ Buku created:', result.rows[0].judul);
     return NextResponse.json(result.rows[0], { status: 201 });
   } catch (error) {
     console.error('❌ Error creating buku:', error);
     return NextResponse.json(
-      { message: 'Gagal menambah buku', error: error.message }, 
+      { message: 'Gagal menambah buku', error: error.message },
       { status: 500 }
     );
   }
 }
 
 export async function PUT(req) {
-  const { ok } = requireRole(req, [ROLES.ADMIN]);
+  const { ok } = await requireRole(req, [ROLES.ADMIN]);
   if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-  
+
   await initDb();
   const db = getDb();
-  
+
   try {
     const body = await req.json();
     const { id, tag_ids, nama_genre, ...updateFields } = body;
-    
+
     if (!id) {
       return NextResponse.json({ message: 'ID diperlukan' }, { status: 400 });
     }
@@ -128,12 +128,12 @@ export async function PUT(req) {
       if (checkResult.rows.length === 0) {
         throw new Error('Buku tidak ditemukan');
       }
-      
+
       // Build update query dynamically
       const updates = [];
       const values = [];
       let paramCount = 0;
-      
+
       Object.keys(updateFields).forEach(key => {
         if (updateFields[key] !== undefined && key !== 'id') {
           paramCount++;
@@ -141,18 +141,18 @@ export async function PUT(req) {
           values.push(updateFields[key]);
         }
       });
-      
+
       if (updates.length > 0) {
         updates.push(`updated_at = CURRENT_TIMESTAMP`);
         paramCount++;
         values.push(id);
-        
+
         await client.query(
           `UPDATE buku SET ${updates.join(', ')} WHERE id = $${paramCount}`,
           values
         );
       }
-      
+
       // Update tags if provided
       if (Array.isArray(tag_ids)) {
         await client.query(`DELETE FROM buku_tags WHERE buku_id = $1`, [id]);
@@ -173,45 +173,45 @@ export async function PUT(req) {
        WHERE b.id = $1`,
       [id]
     );
-    
+
     console.log('✅ Buku updated:', result.rows[0].judul);
     return NextResponse.json(result.rows[0]);
   } catch (error) {
     console.error('❌ Error updating buku:', error);
     return NextResponse.json(
-      { message: 'Gagal update buku', error: error.message }, 
+      { message: 'Gagal update buku', error: error.message },
       { status: 500 }
     );
   }
 }
 
 export async function DELETE(req) {
-  const { ok } = requireRole(req, [ROLES.ADMIN]);
+  const { ok } = await requireRole(req, [ROLES.ADMIN]);
   if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-  
+
   await initDb();
   const db = getDb();
-  
+
   try {
     const { searchParams } = new URL(req.url);
     const id = Number(searchParams.get('id'));
-    
+
     if (!id) {
       return NextResponse.json({ message: 'ID diperlukan' }, { status: 400 });
     }
-    
+
     const result = await db.query(`DELETE FROM buku WHERE id = $1`, [id]);
-    
+
     if (result.rowCount === 0) {
       return NextResponse.json({ message: 'Buku tidak ditemukan' }, { status: 404 });
     }
-    
+
     console.log('✅ Buku deleted, ID:', id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('❌ Error deleting buku:', error);
     return NextResponse.json(
-      { message: 'Gagal hapus buku', error: error.message }, 
+      { message: 'Gagal hapus buku', error: error.message },
       { status: 500 }
     );
   }

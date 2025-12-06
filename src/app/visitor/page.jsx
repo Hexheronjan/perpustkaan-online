@@ -13,13 +13,14 @@ export default function ModernVisitorPage() {
   const [search, setSearch] = useState("");
   const [selectedGenre, setSelectedGenre] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedBook, setSelectedBook] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [booksRes, genresRes] = await Promise.all([
           fetch("/api/visitor/books", { cache: "no-store" }),
-          fetch("/api/visitor/genre", { cache: "no-store" })
+          fetch("/api/visitor/genres", { cache: "no-store" })
         ]);
 
         if (!booksRes.ok) throw new Error("Gagal memuat data buku");
@@ -37,24 +38,24 @@ export default function ModernVisitorPage() {
         setLoading(false);
       }
     };
-    
+
     fetchData();
   }, []);
 
   const filteredBooks = books.filter((book) => {
     const keyword = search.toLowerCase();
-    const matchesSearch = 
+    const matchesSearch =
       book.title?.toLowerCase().includes(keyword) ||
       book.author?.toLowerCase().includes(keyword) ||
       book.description?.toLowerCase().includes(keyword);
-    
+
     // Perbaikan: Cek berbagai kemungkinan nama field untuk genre ID
     const bookGenreId = book.genreId || book.genre_id || book.GenreId;
-    const matchesGenre = 
-      selectedGenre === "all" || 
+    const matchesGenre =
+      selectedGenre === "all" ||
       bookGenreId === parseInt(selectedGenre) ||
       String(bookGenreId) === selectedGenre;
-    
+
     return matchesSearch && matchesGenre;
   });
 
@@ -109,7 +110,7 @@ export default function ModernVisitorPage() {
             <Sparkles className="text-yellow-500" size={20} />
             <span className="text-sm font-semibold text-gray-700">Koleksi Terbaru & Terlengkap</span>
           </div>
-          
+
           <h2 className="text-5xl md:text-6xl font-extrabold mb-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent leading-tight">
             Jelajahi Dunia Literasi
           </h2>
@@ -136,11 +137,10 @@ export default function ModernVisitorPage() {
             {/* Filter Button */}
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-6 py-4 rounded-2xl font-semibold transition-all shadow-lg ${
-                showFilters
-                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white scale-105'
-                  : 'bg-white text-gray-700 hover:bg-gray-50'
-              }`}
+              className={`flex items-center gap-2 px-6 py-4 rounded-2xl font-semibold transition-all shadow-lg ${showFilters
+                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white scale-105'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
             >
               <Filter size={20} />
               <span>Filter</span>
@@ -159,11 +159,10 @@ export default function ModernVisitorPage() {
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setSelectedGenre("all")}
-                  className={`px-4 py-2 rounded-xl font-medium transition-all ${
-                    selectedGenre === "all"
-                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg scale-105'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
+                  className={`px-4 py-2 rounded-xl font-medium transition-all ${selectedGenre === "all"
+                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg scale-105'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
                 >
                   Semua Genre
                 </button>
@@ -171,11 +170,10 @@ export default function ModernVisitorPage() {
                   <button
                     key={genre.id}
                     onClick={() => setSelectedGenre(String(genre.id))}
-                    className={`px-4 py-2 rounded-xl font-medium transition-all ${
-                      selectedGenre === String(genre.id)
-                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg scale-105'
-                        : 'bg-white text-gray-700 hover:bg-gray-50'
-                    }`}
+                    className={`px-4 py-2 rounded-xl font-medium transition-all ${selectedGenre === String(genre.id)
+                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg scale-105'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
                   >
                     {genre.name}
                   </button>
@@ -224,9 +222,7 @@ export default function ModernVisitorPage() {
                 key={book.id}
                 className="group relative bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden border border-gray-100 animate-fade-in-up cursor-pointer"
                 style={{ animationDelay: `${index * 50}ms` }}
-                onClick={() => {
-                  // Optional: Show book detail modal
-                }}
+                onClick={() => setSelectedBook(book)}
               >
                 {/* Book Cover */}
                 <div className="relative h-80 bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 overflow-hidden">
@@ -248,7 +244,11 @@ export default function ModernVisitorPage() {
                   {/* Book Image */}
                   {book.cover ? (
                     <img
-                      src={book.cover.startsWith('http') ? book.cover : `/book-covers/${book.cover}`}
+                      src={
+                        book.cover.startsWith('http') || book.cover.startsWith('/')
+                          ? book.cover
+                          : `/uploads/covers/${book.cover}`
+                      }
                       alt={book.title}
                       className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
                       onError={(e) => {
@@ -274,11 +274,10 @@ export default function ModernVisitorPage() {
 
                   {/* Stock Badge */}
                   <div className="absolute top-4 right-4 z-20">
-                    <div className={`px-4 py-2 rounded-xl font-bold text-sm shadow-lg backdrop-blur-sm ${
-                      book.stock > 0 
-                        ? 'bg-green-500/90 text-white' 
-                        : 'bg-red-500/90 text-white'
-                    } transform group-hover:scale-110 transition-transform`}>
+                    <div className={`px-4 py-2 rounded-xl font-bold text-sm shadow-lg backdrop-blur-sm ${book.stock > 0
+                      ? 'bg-green-500/90 text-white'
+                      : 'bg-red-500/90 text-white'
+                      } transform group-hover:scale-110 transition-transform`}>
                       {book.stock > 0 ? `✓ ${book.stock} tersedia` : '✗ Habis'}
                     </div>
                   </div>
@@ -345,6 +344,113 @@ export default function ModernVisitorPage() {
         )}
       </main>
 
+      {/* Book Detail Modal */}
+      {selectedBook && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden relative animate-fade-in-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setSelectedBook(null)}
+              className="absolute top-4 right-4 p-2 bg-white/80 backdrop-blur-md rounded-full hover:bg-gray-100 transition-colors z-10"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+
+            <div className="flex flex-col md:flex-row">
+              {/* Modal Image Section */}
+              <div className="w-full md:w-1/3 bg-gray-100 relative h-64 md:h-auto min-h-[300px]">
+                {selectedBook.cover ? (
+                  <img
+                    src={
+                      selectedBook.cover.startsWith('http') || selectedBook.cover.startsWith('/')
+                        ? selectedBook.cover
+                        : `/uploads/covers/${selectedBook.cover}`
+                    }
+                    alt={selectedBook.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-indigo-50 text-indigo-300">
+                    <BookOpen size={64} />
+                  </div>
+                )}
+                <div className="absolute top-4 left-4">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm ${selectedBook.stock > 0 ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                    }`}>
+                    {selectedBook.stock > 0 ? 'Tersedia' : 'Habis'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Modal Content Section */}
+              <div className="w-full md:w-2/3 p-8">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-semibold">
+                    {selectedBook.genre_name || 'Umum'}
+                  </span>
+                  {selectedBook.year && (
+                    <span className="flex items-center gap-1 text-xs text-gray-500 font-medium">
+                      <Clock size={12} /> {selectedBook.year}
+                    </span>
+                  )}
+                </div>
+
+                <h2 className="text-3xl font-bold text-gray-800 mb-2 leading-tight">
+                  {selectedBook.title}
+                </h2>
+                <p className="text-lg text-indigo-600 font-medium mb-6">
+                  {selectedBook.author}
+                </p>
+
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2">Deskripsi</h3>
+                    <p className="text-gray-600 leading-relaxed">
+                      {selectedBook.description || 'Tidak ada deskripsi tersedia.'}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-gray-50 p-4 rounded-xl">
+                      <p className="text-xs text-gray-500 mb-1">Penerbit</p>
+                      <p className="font-semibold text-gray-800">{selectedBook.publisher || '-'}</p>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-xl">
+                      <p className="text-xs text-gray-500 mb-1">ISBN</p>
+                      <p className="font-semibold text-gray-800">{selectedBook.isbn || '-'}</p>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-xl">
+                      <p className="text-xs text-gray-500 mb-1">Halaman</p>
+                      <p className="font-semibold text-gray-800">{selectedBook.pages || '-'}</p>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-xl">
+                      <p className="text-xs text-gray-500 mb-1">Stok Total</p>
+                      <p className="font-semibold text-gray-800">{selectedBook.total_stock || '-'}</p>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-gray-100">
+                    <button
+                      onClick={() => router.push('/login')}
+                      className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-2"
+                    >
+                      <User size={20} />
+                      Login untuk Meminjam
+                    </button>
+                    <p className="text-center text-xs text-gray-500 mt-3">
+                      Anda harus login sebagai member untuk meminjam buku ini.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
       <footer className="relative mt-20 bg-gradient-to-r from-indigo-900 via-purple-900 to-pink-900 text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -358,7 +464,7 @@ export default function ModernVisitorPage() {
                 Akses ribuan buku dari berbagai genre. Mulai perjalanan literasimu hari ini!
               </p>
             </div>
-            
+
             <div>
               <h4 className="font-bold mb-4">Statistik</h4>
               <div className="space-y-2 text-sm text-indigo-200">

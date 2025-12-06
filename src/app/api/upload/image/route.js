@@ -7,11 +7,11 @@ import { requireRole, ROLES } from '@/lib/roles';
 
 export async function POST(req) {
   // Require auth: STAF or ADMIN
-  const { ok } = requireRole(req, [ROLES.STAF, ROLES.ADMIN]);
+  const { ok } = await requireRole(req, [ROLES.STAF, ROLES.ADMIN]);
   if (!ok) {
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: false,
-      message: 'Unauthorized' 
+      message: 'Unauthorized'
     }, { status: 403 });
   }
 
@@ -20,27 +20,27 @@ export async function POST(req) {
     const file = formData.get('file');
 
     if (!file) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         success: false,
-        message: 'No file uploaded' 
+        message: 'No file uploaded'
       }, { status: 400 });
     }
 
     // Validate file type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (!validTypes.includes(file.type)) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         success: false,
-        message: 'Invalid file type. Only JPG, PNG, and WEBP are allowed.' 
+        message: 'Invalid file type. Only JPG, PNG, and WEBP are allowed.'
       }, { status: 400 });
     }
 
     // Validate file size (max 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         success: false,
-        message: 'File too large. Maximum size is 5MB.' 
+        message: 'File too large. Maximum size is 5MB.'
       }, { status: 400 });
     }
 
@@ -77,21 +77,21 @@ export async function POST(req) {
 
   } catch (error) {
     console.error('❌ Upload error:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: false,
       message: 'Failed to upload file',
-      error: error.message 
+      error: error.message
     }, { status: 500 });
   }
 }
 
 // DELETE endpoint untuk hapus gambar
 export async function DELETE(req) {
-  const { ok } = requireRole(req, [ROLES.STAF, ROLES.ADMIN]);
+  const { ok } = await requireRole(req, [ROLES.STAF, ROLES.ADMIN]);
   if (!ok) {
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: false,
-      message: 'Unauthorized' 
+      message: 'Unauthorized'
     }, { status: 403 });
   }
 
@@ -100,37 +100,37 @@ export async function DELETE(req) {
     const filename = searchParams.get('filename');
 
     if (!filename) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         success: false,
-        message: 'Filename is required' 
+        message: 'Filename is required'
       }, { status: 400 });
     }
 
     // Delete file
     const filepath = path.join(process.cwd(), 'public', 'uploads', 'covers', filename);
-    
+
     if (existsSync(filepath)) {
       const { unlink } = await import('fs/promises');
       await unlink(filepath);
       console.log('✅ Image deleted:', filename);
-      
+
       return NextResponse.json({
         success: true,
         message: 'Image deleted successfully'
       });
     } else {
-      return NextResponse.json({ 
+      return NextResponse.json({
         success: false,
-        message: 'File not found' 
+        message: 'File not found'
       }, { status: 404 });
     }
 
   } catch (error) {
     console.error('❌ Delete error:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: false,
       message: 'Failed to delete file',
-      error: error.message 
+      error: error.message
     }, { status: 500 });
   }
 }

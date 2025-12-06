@@ -6,7 +6,7 @@ export async function GET(req) {
   try {
     await initDb();
     const db = getDb();
-    
+
     // ✅ PUBLIC - No auth check
     const result = await db.query(`
       SELECT 
@@ -26,13 +26,13 @@ export async function GET(req) {
         g.nama_genre as genre_name
       FROM buku b
       LEFT JOIN genre g ON b.genre_id = g.id
-      WHERE b.is_approved = true
+      WHERE b.status = 'approved'
       ORDER BY b.created_at DESC
     `);
-    
+
     console.log('✅ Visitor books fetched:', result.rows.length);
     return NextResponse.json(result.rows);
-    
+
   } catch (error) {
     console.error('❌ Visitor Books API Error:', error);
     return NextResponse.json({

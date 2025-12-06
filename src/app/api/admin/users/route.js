@@ -4,7 +4,7 @@ import { requireRole, ROLES } from '@/lib/roles';
 import { hashPassword } from '@/lib/auth';
 
 export async function GET(req) {
-  const { ok } = requireRole(req, [ROLES.ADMIN]);
+  const { ok } = await requireRole(req, [ROLES.ADMIN]);
   if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 
   await initDb();
@@ -27,7 +27,7 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-  const { ok } = requireRole(req, [ROLES.ADMIN]);
+  const { ok } = await requireRole(req, [ROLES.ADMIN]);
   if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 
   await initDb();
@@ -55,7 +55,7 @@ export async function POST(req) {
 }
 
 export async function PUT(req) {
-  const { ok } = requireRole(req, [ROLES.ADMIN]);
+  const { ok } = await requireRole(req, [ROLES.ADMIN]);
   if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 
   await initDb();
@@ -90,7 +90,7 @@ export async function PUT(req) {
 }
 
 export async function DELETE(req) {
-  const { ok } = requireRole(req, [ROLES.ADMIN]);
+  const { ok } = await requireRole(req, [ROLES.ADMIN]);
   if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 
   await initDb();
@@ -103,7 +103,7 @@ export async function DELETE(req) {
 
   try {
     const result = await db.query(`DELETE FROM users WHERE id = $1`, [id]);
-    
+
     if (result.rowCount === 0) {
       return NextResponse.json({ message: 'User not found' }, { status: 404 });
     }

@@ -6,7 +6,7 @@ import { Plus, Edit, Trash2, Search, X } from 'lucide-react';
 
 const Modal = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
-  
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -37,6 +37,48 @@ const BookForm = ({ book, genres, tags, onSubmit, onCancel }) => {
     genre_id: '',
     tag_ids: []
   });
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      alert('Hanya file JPG, PNG, dan WEBP yang diperbolehkan');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Ukuran file maksimal 5MB');
+      return;
+    }
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/upload/image', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setFormData(prev => ({ ...prev, sampul_buku: data.url }));
+      } else {
+        alert(data.message || 'Gagal upload gambar');
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Terjadi kesalahan saat upload gambar');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -154,7 +196,24 @@ const BookForm = ({ book, genres, tags, onSubmit, onCancel }) => {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">URL Sampul Buku</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Upload Sampul Buku</label>
+        <div className="flex gap-2 items-center mb-2">
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleFileChange}
+            className="block w-full text-sm text-gray-500
+              file:mr-4 file:py-2 file:px-4
+              file:rounded-full file:border-0
+              file:text-sm file:font-semibold
+              file:bg-indigo-50 file:text-indigo-700
+              hover:file:bg-indigo-100"
+            disabled={uploading}
+          />
+          {uploading && <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>}
+        </div>
+
+        <label className="block text-sm font-medium text-gray-700 mb-2">URL Sampul Buku (Otomatis terisi)</label>
         <input
           type="text"
           value={formData.sampul_buku || ''}
@@ -325,12 +384,13 @@ export default function ManajemenBukuPage() {
                     <span className="text-gray-600">{book.stok_tersedia}/{book.stok_total}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      book.is_approved
-                        ? 'bg-green-100 text-green-700'
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${book.status === 'approved'
+                      ? 'bg-green-100 text-green-700'
+                      : book.status === 'rejected'
+                        ? 'bg-red-100 text-red-700'
                         : 'bg-yellow-100 text-yellow-700'
-                    }`}>
-                      {book.is_approved ? 'Approved' : 'Pending'}
+                      }`}>
+                      {book.status === 'approved' ? 'Approved' : book.status === 'rejected' ? 'Rejected' : 'Pending'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">

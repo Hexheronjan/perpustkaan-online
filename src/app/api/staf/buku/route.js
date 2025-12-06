@@ -8,16 +8,16 @@ import { getRoleFromRequest, requireRole, ROLES } from '@/lib/roles';
 export async function GET(req) {
   await initDb();
   const db = getDb();
-  const role = getRoleFromRequest(req);
-  
+  const role = await getRoleFromRequest(req);
+
   try {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('user_id');
     const statusFilter = searchParams.get('status'); // 'approved', 'pending', 'rejected', 'all'
-    
+
     let query;
     let params = [];
-    
+
     if (role === ROLES.ADMIN) {
       // ADMIN: Lihat semua buku dengan filter status
       if (statusFilter && statusFilter !== 'all') {
@@ -82,16 +82,16 @@ export async function GET(req) {
         ORDER BY b.created_at DESC
       `;
     }
-    
+
     const result = await db.query(query, params);
-    
+
     console.log(`✅ Buku fetched (role: ${role}, user_id: ${userId}):`, result.rows.length);
-    
+
     return NextResponse.json(result.rows);
   } catch (error) {
     console.error('❌ Error fetching buku:', error);
     return NextResponse.json(
-      { error: error.message }, 
+      { error: error.message },
       { status: 500 }
     );
   }
@@ -99,24 +99,24 @@ export async function GET(req) {
 
 // POST: Tambah buku baru
 export async function POST(req) {
-  const { ok } = requireRole(req, [ROLES.STAF, ROLES.ADMIN]);
+  const { ok } = await requireRole(req, [ROLES.STAF, ROLES.ADMIN]);
   if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-  
+
   await initDb();
   const db = getDb();
-  const role = getRoleFromRequest(req);
-  
+  const role = await getRoleFromRequest(req);
+
   try {
     const body = await req.json();
-    const { 
+    const {
       judul, penulis, penerbit, tahun_terbit, isbn, jumlah_halaman,
       deskripsi, stok_tersedia = 0, stok_total = 0, sampul_buku,
       genre_id, tag_ids = [], user_id
     } = body;
-    
+
     if (!judul || !penulis) {
-      return NextResponse.json({ 
-        message: 'Judul dan penulis wajib diisi' 
+      return NextResponse.json({
+        message: 'Judul dan penulis wajib diisi'
       }, { status: 400 });
     }
 
@@ -125,7 +125,7 @@ export async function POST(req) {
       const parsed = parseInt(value, 10);
       return Number.isNaN(parsed) ? null : parsed;
     };
-    
+
     const toNullableText = (value) => {
       if (value === undefined || value === null) return null;
       const trimmed = String(value).trim();
@@ -154,7 +154,7 @@ export async function POST(req) {
     const status = role === ROLES.ADMIN ? 'approved' : 'pending';
     const approvedBy = role === ROLES.ADMIN ? user_id : null;
     const approvedAt = role === ROLES.ADMIN ? new Date() : null;
-    
+
     const createdId = await withTransaction(async (client) => {
       const insertResult = await client.query(`
         INSERT INTO buku (
@@ -180,9 +180,9 @@ export async function POST(req) {
         approvedBy,
         approvedAt
       ]);
-      
+
       const bukuId = insertResult.rows[0].id;
-      
+
       // Insert tags
       if (Array.isArray(tag_ids) && tag_ids.length > 0) {
         for (const tagId of tag_ids) {
@@ -192,16 +192,16 @@ export async function POST(req) {
           );
         }
       }
-      
+
       return bukuId;
     });
 
-    const message = status === 'approved' 
+    const message = status === 'approved'
       ? 'Buku berhasil ditambahkan (langsung approved)'
       : 'Buku berhasil ditambahkan, menunggu approval admin';
-    
+
     console.log(`✅ Buku created with status: ${status}`, judul);
-    
+
     return NextResponse.json({
       id: createdId,
       judul,
@@ -211,7 +211,7 @@ export async function POST(req) {
   } catch (error) {
     console.error('❌ Error creating buku:', error);
     return NextResponse.json(
-      { message: 'Gagal menambah buku', error: error.message }, 
+      { message: 'Gagal menambah buku', error: error.message },
       { status: 500 }
     );
   }
@@ -219,81 +219,99 @@ export async function POST(req) {
 
 // PUT: Edit buku (STAF: kembali pending, ADMIN: tetap approved)
 export async function PUT(req) {
-  const { ok } = requireRole(req, [ROLES.STAF, ROLES.ADMIN]);
+  const { ok } = await requireRole(req, [ROLES.STAF, ROLES.ADMIN]);
   if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-  
+
   await initDb();
   const db = getDb();
-  const role = getRoleFromRequest(req);
-  
+  const role = await getRoleFromRequest(req);
+
   try {
     const body = await req.json();
     const { id, tag_ids, user_id, ...updateFields } = body;
-    
+
     if (!id) {
       return NextResponse.json({ message: 'ID diperlukan' }, { status: 400 });
     }
 
+    const toNullableInteger = (value) => {
+      if (value === undefined || value === null || value === '') return null;
+      const parsed = parseInt(value, 10);
+      return Number.isNaN(parsed) ? null : parsed;
+    };
+
+    const toNullableText = (value) => {
+      if (value === undefined || value === null) return null;
+      const trimmed = String(value).trim();
+      return trimmed.length ? trimmed : null;
+    };
+
     await withTransaction(async (client) => {
       // Check if book exists
       const checkResult = await client.query(
-        `SELECT * FROM buku WHERE id = $1`, 
+        `SELECT * FROM buku WHERE id = $1`,
         [id]
       );
-      
+
       if (checkResult.rows.length === 0) {
         throw new Error('Buku tidak ditemukan');
       }
-      
-      const book = checkResult.rows[0];
-      
-      // STAF hanya bisa edit buku milik sendiri
-      if (role === ROLES.STAF && book.created_by !== user_id) {
-        throw new Error('Anda tidak memiliki akses untuk mengedit buku ini');
-      }
-      
+
       // Build update query
       const updates = [];
       const values = [];
       let paramCount = 0;
-      
+
       Object.keys(updateFields).forEach(key => {
-        if (updateFields[key] !== undefined && key !== 'id' && key !== 'nama_genre') {
+        let value = updateFields[key];
+
+        // Sanitize input
+        if (['tahun_terbit', 'jumlah_halaman', 'genre_id'].includes(key)) {
+          value = toNullableInteger(value);
+        } else if (['stok_tersedia', 'stok_total'].includes(key)) {
+          // Default to 0 if invalid
+          const num = Number(value);
+          value = Number.isNaN(num) ? 0 : num;
+        } else if (['judul', 'penulis', 'penerbit', 'isbn', 'deskripsi', 'sampul_buku'].includes(key)) {
+          value = toNullableText(value);
+        }
+
+        if (value !== undefined && key !== 'id' && key !== 'nama_genre' && key !== 'updated_at') {
           paramCount++;
           updates.push(`${key} = $${paramCount}`);
-          values.push(updateFields[key]);
+          values.push(value);
         }
       });
-      
+
       if (updates.length > 0) {
         updates.push(`updated_at = CURRENT_TIMESTAMP`);
-        
+
         // STAF: set status = pending (perlu re-approval)
         // ADMIN: status tidak berubah
         if (role === ROLES.STAF) {
           paramCount++;
           updates.push(`status = $${paramCount}`);
           values.push('pending');
-          
+
           // Reset approval info
           paramCount++;
           updates.push(`approved_by = $${paramCount}`);
           values.push(null);
-          
+
           paramCount++;
           updates.push(`approved_at = $${paramCount}`);
           values.push(null);
         }
-        
+
         paramCount++;
         values.push(id);
-        
+
         await client.query(
           `UPDATE buku SET ${updates.join(', ')} WHERE id = $${paramCount}`,
           values
         );
       }
-      
+
       // Update tags
       if (Array.isArray(tag_ids)) {
         await client.query(`DELETE FROM buku_tags WHERE buku_id = $1`, [id]);
@@ -314,13 +332,13 @@ export async function PUT(req) {
        WHERE b.id = $1`,
       [id]
     );
-    
+
     const message = role === ROLES.STAF
       ? 'Buku berhasil diupdate, menunggu re-approval admin'
       : 'Buku berhasil diupdate';
-    
+
     console.log('✅ Buku updated:', result.rows[0].judul);
-    
+
     return NextResponse.json({
       ...result.rows[0],
       message
@@ -328,7 +346,7 @@ export async function PUT(req) {
   } catch (error) {
     console.error('❌ Error updating buku:', error);
     return NextResponse.json(
-      { message: error.message || 'Gagal update buku' }, 
+      { message: error.message || 'Gagal update buku' },
       { status: error.message.includes('akses') ? 403 : 500 }
     );
   }
@@ -336,53 +354,53 @@ export async function PUT(req) {
 
 // DELETE: Hapus buku
 export async function DELETE(req) {
-  const { ok } = requireRole(req, [ROLES.STAF, ROLES.ADMIN]);
+  const { ok } = await requireRole(req, [ROLES.STAF, ROLES.ADMIN]);
   if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-  
+
   await initDb();
   const db = getDb();
-  const role = getRoleFromRequest(req);
-  
+  const role = await getRoleFromRequest(req);
+
   try {
     const { searchParams } = new URL(req.url);
     const id = Number(searchParams.get('id'));
     const userId = Number(searchParams.get('user_id'));
-    
+
     if (!id) {
       return NextResponse.json({ message: 'ID diperlukan' }, { status: 400 });
     }
-    
+
     // Check if book exists
     const checkResult = await db.query(
-      `SELECT * FROM buku WHERE id = $1`, 
+      `SELECT * FROM buku WHERE id = $1`,
       [id]
     );
-    
+
     if (checkResult.rows.length === 0) {
       return NextResponse.json({ message: 'Buku tidak ditemukan' }, { status: 404 });
     }
-    
+
     const book = checkResult.rows[0];
-    
+
     // STAF hanya bisa hapus buku milik sendiri
     // ADMIN bisa hapus semua
     if (role === ROLES.STAF && book.created_by !== userId) {
-      return NextResponse.json({ 
-        message: 'Anda tidak memiliki akses untuk menghapus buku ini' 
+      return NextResponse.json({
+        message: 'Anda tidak memiliki akses untuk menghapus buku ini'
       }, { status: 403 });
     }
-    
+
     await db.query(`DELETE FROM buku WHERE id = $1`, [id]);
-    
+
     console.log('✅ Buku deleted, ID:', id);
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       message: 'Buku berhasil dihapus'
     });
   } catch (error) {
     console.error('❌ Error deleting buku:', error);
     return NextResponse.json(
-      { message: 'Gagal hapus buku', error: error.message }, 
+      { message: 'Gagal hapus buku', error: error.message },
       { status: 500 }
     );
   }

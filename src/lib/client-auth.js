@@ -65,3 +65,16 @@ export function getAuthHeaders() {
   }
   return {};
 }
+
+export function getRole() {
+  const user = getUser();
+  if (user && user.role_id) {
+    const roles = {
+      2: 'member',
+      3: 'staf',
+      4: 'admin'
+    };
+    return roles[user.role_id] || null;
+  }
+  return null;
+}

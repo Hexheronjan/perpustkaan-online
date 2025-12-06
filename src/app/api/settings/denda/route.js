@@ -40,8 +40,8 @@ export async function GET(req) {
     // Convert to object
     const settings = {};
     result.rows.forEach(row => {
-      settings[row.key] = row.key.includes('denda') || row.key.includes('durasi') 
-        ? Number(row.value) 
+      settings[row.key] = row.key.includes('denda') || row.key.includes('durasi')
+        ? Number(row.value)
         : row.value;
     });
 
@@ -68,7 +68,7 @@ export async function GET(req) {
 
 // PUT - Update pengaturan denda (Admin & Staf only)
 export async function PUT(req) {
-  const { ok } = requireRole(req, [ROLES.STAF, ROLES.ADMIN]);
+  const { ok } = await requireRole(req, [ROLES.STAF, ROLES.ADMIN]);
   if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 
   await initDb();
@@ -76,17 +76,17 @@ export async function PUT(req) {
 
   try {
     const body = await req.json();
-    const { 
-      denda_per_hari, 
-      durasi_pinjam_default, 
+    const {
+      denda_per_hari,
+      durasi_pinjam_default,
       max_durasi_pinjam,
-      denda_hilang 
+      denda_hilang
     } = body;
 
     // Validasi
     if (denda_per_hari < 0 || durasi_pinjam_default < 1 || max_durasi_pinjam < 7) {
-      return NextResponse.json({ 
-        message: 'Nilai tidak valid' 
+      return NextResponse.json({
+        message: 'Nilai tidak valid'
       }, { status: 400 });
     }
 
@@ -117,9 +117,9 @@ export async function PUT(req) {
 
   } catch (error) {
     console.error('❌ Error updating settings:', error);
-    return NextResponse.json({ 
-      message: 'Gagal update pengaturan', 
-      error: error.message 
+    return NextResponse.json({
+      message: 'Gagal update pengaturan',
+      error: error.message
     }, { status: 500 });
   }
 }

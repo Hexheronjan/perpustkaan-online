@@ -5,7 +5,7 @@ import { requireRole, ROLES } from '@/lib/roles';
 initDb();
 
 export async function POST(req) {
-	const { ok } = requireRole(req, [ROLES.MEMBER, ROLES.ADMIN]);
+	const { ok } = await requireRole(req, [ROLES.MEMBER, ROLES.ADMIN]);
 	if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 	const db = getDb();
 	const body = await req.json();

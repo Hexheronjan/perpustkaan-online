@@ -17,7 +17,7 @@ function mapBook(row) {
 }
 
 export async function GET(req) {
-	const { ok } = requireRole(req, [ROLES.MEMBER, ROLES.ADMIN]);
+	const { ok } = await requireRole(req, [ROLES.MEMBER, ROLES.ADMIN]);
 	if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 	const db = getDb();
 	const rows = db.prepare(`SELECT * FROM books WHERE is_approved = 1`).all();

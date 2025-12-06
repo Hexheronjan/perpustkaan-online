@@ -4,7 +4,7 @@ import { getDb, initDb, withTransaction } from '@/lib/db';
 import { requireRole, ROLES } from '@/lib/roles';
 
 export async function GET(req) {
-	const { ok } = requireRole(req, [ROLES.ADMIN]);
+	const { ok } = await requireRole(req, [ROLES.ADMIN]);
 	if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 
 	await initDb();
@@ -44,7 +44,7 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-	const { ok } = requireRole(req, [ROLES.ADMIN]);
+	const { ok } = await requireRole(req, [ROLES.ADMIN]);
 	if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 
 	await initDb();

@@ -6,7 +6,7 @@ import { getRoleFromRequest, requireRole, ROLES } from '@/lib/roles';
 
 // GET - Ambil semua peminjaman (filtered by role)
 export async function GET(req) {
-  const { ok, role } = requireRole(req, [ROLES.MEMBER, ROLES.STAF, ROLES.ADMIN]);
+  const { ok, role } = await requireRole(req, [ROLES.MEMBER, ROLES.STAF, ROLES.ADMIN]);
   if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 
   await initDb();
@@ -84,16 +84,16 @@ export async function GET(req) {
     return NextResponse.json(dataWithDenda);
   } catch (error) {
     console.error('❌ Error fetching peminjaman:', error);
-    return NextResponse.json({ 
-      message: 'Failed to fetch peminjaman', 
-      error: error.message 
+    return NextResponse.json({
+      message: 'Failed to fetch peminjaman',
+      error: error.message
     }, { status: 500 });
   }
 }
 
 // POST - Member request peminjaman buku
 export async function POST(req) {
-  const { ok, role } = requireRole(req, [ROLES.MEMBER]);
+  const { ok, role } = await requireRole(req, [ROLES.MEMBER]);
   if (!ok) return NextResponse.json({ message: 'Forbidden - Member only' }, { status: 403 });
 
   await initDb();
@@ -104,8 +104,8 @@ export async function POST(req) {
     const { user_id, buku_id, durasi_hari = 7 } = body;
 
     if (!user_id || !buku_id) {
-      return NextResponse.json({ 
-        message: 'user_id dan buku_id diperlukan' 
+      return NextResponse.json({
+        message: 'user_id dan buku_id diperlukan'
       }, { status: 400 });
     }
 
@@ -132,8 +132,8 @@ export async function POST(req) {
     );
 
     if (activeResult.rows.length > 0) {
-      return NextResponse.json({ 
-        message: 'Anda masih memiliki peminjaman aktif untuk buku ini' 
+      return NextResponse.json({
+        message: 'Anda masih memiliki peminjaman aktif untuk buku ini'
       }, { status: 400 });
     }
 
@@ -151,8 +151,8 @@ export async function POST(req) {
       ) VALUES ($1, $2, $3, 'pending', $4)
       RETURNING *
     `, [
-      user_id, 
-      buku_id, 
+      user_id,
+      buku_id,
       tanggalKembaliTarget.toISOString(),
       `Durasi peminjaman: ${durasi_hari} hari`
     ]);
@@ -167,16 +167,16 @@ export async function POST(req) {
 
   } catch (error) {
     console.error('❌ Error creating peminjaman:', error);
-    return NextResponse.json({ 
-      message: 'Gagal membuat request peminjaman', 
-      error: error.message 
+    return NextResponse.json({
+      message: 'Gagal membuat request peminjaman',
+      error: error.message
     }, { status: 500 });
   }
 }
 
 // PUT - Staf/Admin approve/reject peminjaman atau update denda
 export async function PUT(req) {
-  const { ok } = requireRole(req, [ROLES.STAF, ROLES.ADMIN]);
+  const { ok } = await requireRole(req, [ROLES.STAF, ROLES.ADMIN]);
   if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 
   await initDb();
@@ -232,7 +232,7 @@ export async function PUT(req) {
         );
 
         console.log('✅ Peminjaman approved, ID:', id);
-      } 
+      }
       else if (action === 'reject') {
         // Reject peminjaman
         if (current.status !== 'pending') {
@@ -308,16 +308,16 @@ export async function PUT(req) {
 
   } catch (error) {
     console.error('❌ Error updating peminjaman:', error);
-    return NextResponse.json({ 
-      message: error.message || 'Gagal update peminjaman', 
-      error: error.message 
+    return NextResponse.json({
+      message: error.message || 'Gagal update peminjaman',
+      error: error.message
     }, { status: 500 });
   }
 }
 
 // DELETE - Admin only (hard delete)
 export async function DELETE(req) {
-  const { ok } = requireRole(req, [ROLES.ADMIN]);
+  const { ok } = await requireRole(req, [ROLES.ADMIN]);
   if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 
   await initDb();
@@ -342,9 +342,9 @@ export async function DELETE(req) {
 
   } catch (error) {
     console.error('❌ Error deleting peminjaman:', error);
-    return NextResponse.json({ 
-      message: 'Gagal hapus peminjaman', 
-      error: error.message 
+    return NextResponse.json({
+      message: 'Gagal hapus peminjaman',
+      error: error.message
     }, { status: 500 });
   }
 }

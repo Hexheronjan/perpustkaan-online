@@ -1,9 +1,9 @@
-// src/app/login/page.jsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { BookOpen, User, Lock, Eye, EyeOff, Sparkles, ArrowRight, LogIn } from 'lucide-react';
+import { setToken, setUser } from '@/lib/client-auth';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,57 +14,80 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [particles, setParticles] = useState([]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        console.log('✅ Login success, role:', data.user.role_id);
-        
-        // Redirect based on role
-        switch (data.user.role_id) {
-          case 4: // Admin
-            router.push('/Admin/dashboard');
-            break;
-          case 3: // Staf
-            router.push('/Staf/dashboard');
-            break;
-          case 2: // Member
-            router.push('/Member/dashboard');
-            break;
-          default:
-            router.push('/Visitor');
-        }
-      } else {
-        setError(data.message || 'Login gagal');
-      }
-    } catch (err) {
-      console.error('Login error:', err);
-      setError('Terjadi kesalahan. Silakan coba lagi.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVisitorClick = (e) => {
-    e.preventDefault();
-    router.push('/visitor');
-  };
+  useEffect(() => {
+    const newParticles = [...Array(20)].map(() => ({
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      delay: Math.random() * 5,
+      duration: 5 + Math.random() * 10
+    }));
+    setParticles(newParticles);
+  }, []);
 
   const handleRegisterClick = (e) => {
     e.preventDefault();
     router.push('/register');
+  };
+
+  const handleVisitorClick = () => {
+    // Set default visitor data
+    const visitorUser = {
+      id: 0,
+      username: 'visitor',
+      role: 'visitor',
+      role_id: 1
+    };
+
+    setUser(visitorUser);
+    // Visitor doesn't need a token for public routes, but we can set a dummy one if needed
+    // setToken('visitor-token'); 
+
+    router.push('/visitor');
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Terjadi kesalahan saat login');
+      }
+
+      // Simpan token dan user data
+      setToken(data.accessToken || data.token);
+      setUser(data.user);
+
+      // Redirect berdasarkan role
+      const role = data.user.role;
+      if (role === 'admin') {
+        router.push('/admin/dashboard');
+      } else if (role === 'staf') {
+        router.push('/staf/dashboard');
+      } else if (role === 'member') {
+        router.push('/member/dashboard');
+      } else {
+        router.push('/');
+      }
+
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -78,15 +101,15 @@ export default function LoginPage() {
 
       {/* Floating Particles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(20)].map((_, i) => (
+        {particles.map((particle, i) => (
           <div
             key={i}
             className="absolute w-2 h-2 bg-white rounded-full opacity-20 animate-float"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 5}s`,
-              animationDuration: `${5 + Math.random() * 10}s`
+              left: `${particle.left}%`,
+              top: `${particle.top}%`,
+              animationDelay: `${particle.delay}s`,
+              animationDuration: `${particle.duration}s`
             }}
           />
         ))}
@@ -94,7 +117,6 @@ export default function LoginPage() {
 
       {/* Main Content */}
       <div className="relative z-10 w-full max-w-md animate-fade-in-up">
-        {/* Logo & Brand */}
         <div className="text-center mb-8 animate-fade-in">
           <div className="inline-flex items-center justify-center mb-6 relative group">
             <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full blur-2xl opacity-50 group-hover:opacity-75 transition-opacity animate-pulse-slow"></div>
@@ -116,7 +138,7 @@ export default function LoginPage() {
         <div className="relative group">
           {/* Glow Effect */}
           <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-3xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity animate-pulse-slow"></div>
-          
+
           {/* Card */}
           <div className="relative bg-slate-800/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-700/50 overflow-hidden">
             {/* Decorative Header */}

@@ -1,4 +1,3 @@
-// "D:\projekakhir_pkl\Projek-akhir-pkl\src\components\admin\AdminLayout.js"
 'use client';
 
 import React, { useState } from 'react';
@@ -19,6 +18,15 @@ const AdminLayout = ({ children }) => {
     { id: 'peminjaman', label: 'peminjaman', icon: Bookmark, path: '/admin/peminjaman' },
   ];
 
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-100">
       <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-indigo-900 text-white transition-all duration-300 flex flex-col`}>
@@ -37,9 +45,8 @@ const AdminLayout = ({ children }) => {
               <Link
                 key={item.id}
                 href={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  isActive ? 'bg-indigo-700 text-white' : 'hover:bg-indigo-800 text-indigo-100'
-                }`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-indigo-700 text-white' : 'hover:bg-indigo-800 text-indigo-100'
+                  }`}
               >
                 <Icon size={20} />
                 {sidebarOpen && <span className="font-medium">{item.label}</span>}
@@ -53,7 +60,10 @@ const AdminLayout = ({ children }) => {
             <Settings size={20} />
             {sidebarOpen && <span>Pengaturan</span>}
           </button>
-          <button className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-800 w-full text-left">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-800 w-full text-left"
+          >
             <LogOut size={20} />
             {sidebarOpen && <span>Logout</span>}
           </button>

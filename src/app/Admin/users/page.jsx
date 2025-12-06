@@ -6,7 +6,7 @@ import { Plus, Edit, Trash2, Search, X, User } from 'lucide-react';
 
 const Modal = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
-  
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -17,6 +17,36 @@ const Modal = ({ isOpen, onClose, title, children }) => {
           </button>
         </div>
         <div className="p-6">{children}</div>
+      </div>
+    </div>
+  );
+};
+
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all scale-100">
+        <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
+          <Trash2 className="text-red-600" size={24} />
+        </div>
+        <h3 className="text-xl font-bold text-center text-gray-900 mb-2">{title}</h3>
+        <p className="text-center text-gray-600 mb-8">{message}</p>
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors font-medium"
+          >
+            Batal
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 px-4 py-2 text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors font-medium shadow-lg shadow-red-200"
+          >
+            Hapus
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -125,7 +155,7 @@ const RoleBadge = ({ roleId }) => {
     3: 'bg-purple-100 text-purple-700',
     4: 'bg-red-100 text-red-700'
   };
-  
+
   const roleNames = {
     1: 'Visitor',
     2: 'Member',
@@ -148,6 +178,7 @@ export default function ManajemenUsersPage() {
   const [filterRole, setFilterRole] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -163,7 +194,7 @@ export default function ManajemenUsersPage() {
       const usersData = await usersRes.json();
       console.log('Users data:', usersData); // Debug log
       setUsers(Array.isArray(usersData) ? usersData : []);
-      
+
       setLoading(false);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -195,12 +226,19 @@ export default function ManajemenUsersPage() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Yakin ingin menghapus user ini?')) return;
+  const handleDelete = (user) => {
+    setDeleteTarget(user);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
 
     try {
-      const response = await fetch(`/api/admin/users?id=${id}`, { method: 'DELETE' });
-      if (response.ok) fetchData();
+      const response = await fetch(`/api/admin/users?id=${deleteTarget.id}`, { method: 'DELETE' });
+      if (response.ok) {
+        fetchData();
+        setDeleteTarget(null);
+      }
     } catch (error) {
       console.error('Error deleting user:', error);
     }
@@ -222,8 +260,8 @@ export default function ManajemenUsersPage() {
 
   const filteredUsers = Array.isArray(users) ? users.filter(user => {
     const matchesSearch = user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.nama_lengkap?.toLowerCase().includes(searchTerm.toLowerCase());
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.nama_lengkap?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = filterRole === 'all' || user.role_id === Number(filterRole);
     return matchesSearch && matchesRole;
   }) : [];
@@ -311,11 +349,10 @@ export default function ManajemenUsersPage() {
                   <td className="px-6 py-4">
                     <button
                       onClick={() => toggleUserStatus(user.id, user.is_active)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        user.is_active
+                      className={`px-3 py-1 rounded-full text-xs font-medium ${user.is_active
                           ? 'bg-green-100 text-green-700'
                           : 'bg-gray-100 text-gray-700'
-                      }`}
+                        }`}
                     >
                       {user.is_active ? 'Aktif' : 'Nonaktif'}
                     </button>
@@ -332,7 +369,7 @@ export default function ManajemenUsersPage() {
                         <Edit size={18} />
                       </button>
                       <button
-                        onClick={() => handleDelete(user.id)}
+                        onClick={() => handleDelete(user)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       >
                         <Trash2 size={18} />
@@ -364,6 +401,14 @@ export default function ManajemenUsersPage() {
           }}
         />
       </Modal>
+
+      <ConfirmationModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        title="Hapus User"
+        message={`Apakah Anda yakin ingin menghapus user "${deleteTarget?.username}"? Tindakan ini tidak dapat dibatalkan.`}
+      />
     </div>
   );
 }

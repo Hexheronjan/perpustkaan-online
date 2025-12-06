@@ -19,32 +19,32 @@ function mapPeminjaman(row) {
 }
 
 export async function GET(req) {
-	const { ok } = requireRole(req, [ROLES.MEMBER, ROLES.ADMIN]);
+	const { ok } = await requireRole(req, [ROLES.MEMBER, ROLES.ADMIN]);
 	if (!ok) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-	
+
 	await initDb();
 	const db = getDb();
 	const { searchParams } = new URL(req.url);
 	const userId = searchParams.get('user_id');
-	
+
 	// Member hanya bisa melihat peminjaman mereka sendiri
-	const role = getRoleFromRequest(req);
+	const role = await getRoleFromRequest(req);
 	if (role === ROLES.MEMBER && !userId) {
-		return NextResponse.json({ 
-			message: 'user_id diperlukan untuk Member role' 
+		return NextResponse.json({
+			message: 'user_id diperlukan untuk Member role'
 		}, { status: 400 });
 	}
-	
+
 	let query = `SELECT * FROM peminjaman`;
 	const params = [];
-	
+
 	if (userId) {
 		query += ` WHERE user_id = $1`;
 		params.push(userId);
 	}
-	
+
 	query += ` ORDER BY created_at DESC`;
-	
+
 	const result = await db.query(query, params);
 	return NextResponse.json(result.rows.map(mapPeminjaman));
 }
