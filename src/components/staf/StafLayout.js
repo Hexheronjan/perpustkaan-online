@@ -4,6 +4,9 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, BookOpen, Users, Library, Menu, X, LogOut, Settings } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const NotificationBellLazy = dynamic(() => import('@/components/ui/NotificationBell'), { ssr: false });
 
 const StafLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -70,9 +73,30 @@ const StafLayout = ({ children }) => {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-8">{children}</div>
-      </main>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Header with NotificationBell */}
+        <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between flex-shrink-0 shadow-sm">
+          <div>
+            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Staf Panel</p>
+            <p className="font-bold text-gray-800">Perpustakaan Digital</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <NotificationBellLazy role="staf" />
+            <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
+              <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md">
+                S
+              </div>
+              <div className="hidden sm:block">
+                <p className="text-sm font-semibold text-gray-800">Staf</p>
+                <p className="text-xs text-gray-400">Petugas Perpustakaan</p>
+              </div>
+            </div>
+          </div>
+        </header>
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-6 md:p-8">{children}</div>
+        </main>
+      </div>
     </div>
   );
 };

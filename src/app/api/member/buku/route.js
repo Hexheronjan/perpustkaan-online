@@ -33,7 +33,7 @@ export async function GET(req) {
 		// Filter only approved books
 		const result = await db.query(`
 			SELECT * FROM buku 
-			WHERE status = 'approved'
+			WHERE is_approved = true
 			ORDER BY created_at DESC
 		`);
 

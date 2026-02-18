@@ -7,7 +7,7 @@ let dbInstance;
 function getDatabaseConfig() {
 	const url = process.env.DATABASE_URL;
 	if (!url || url.trim() === '') {
-		// Default PostgreSQL connection config
+		// Default PostgreSQL connection config (local development)
 		return {
 			host: process.env.DB_HOST || 'localhost',
 			port: process.env.DB_PORT || 5432,
@@ -16,14 +16,20 @@ function getDatabaseConfig() {
 			password: process.env.DB_PASSWORD || 'password',
 		};
 	}
-	// Parse DATABASE_URL if provided
-	return url;
+	// Supabase / remote PostgreSQL: gunakan connection string + SSL
+	return {
+		connectionString: url,
+		ssl: { rejectUnauthorized: false },
+	};
 }
 
 export function getDb() {
 	if (!dbInstance) {
 		const config = getDatabaseConfig();
-		dbInstance = new Pool(typeof config === 'string' ? { connectionString: config } : config);
+		dbInstance = new Pool({
+			...config,
+			max: 3, // Batasi koneksi untuk serverless/Supabase pooler
+		});
 	}
 	return dbInstance;
 }

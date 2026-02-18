@@ -4,6 +4,9 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, BookOpen, Library, Menu, X, LogOut, Settings, RotateCcw } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const NotificationBellLazy = dynamic(() => import('@/components/ui/NotificationBell'), { ssr: false });
 
 const MemberLayout = ({ children }) => {
     const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
@@ -107,16 +110,39 @@ const MemberLayout = ({ children }) => {
                 {/* Mobile Header */}
                 <header className="md:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between flex-shrink-0">
                     <h1 className="text-lg font-bold text-gray-800">Perpustakaan</h1>
-                    <button
-                        onClick={() => setMobileSidebarOpen(true)}
-                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-                    >
-                        <Menu size={24} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <NotificationBellLazy role="member" />
+                        <button
+                            onClick={() => setMobileSidebarOpen(true)}
+                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                        >
+                            <Menu size={24} />
+                        </button>
+                    </div>
+                </header>
+
+                {/* Desktop Header */}
+                <header className="hidden md:flex bg-white border-b border-gray-200 px-6 py-3 items-center justify-between flex-shrink-0 shadow-sm">
+                    <div>
+                        <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Member</p>
+                        <p className="font-bold text-gray-800">Perpustakaan Digital</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <NotificationBellLazy role="member" />
+                        <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
+                            <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-pink-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md">
+                                M
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold text-gray-800">Member</p>
+                                <p className="text-xs text-gray-400">Anggota Perpustakaan</p>
+                            </div>
+                        </div>
+                    </div>
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-y-auto p-4 md:p-8">
+                <main className="flex-1 overflow-y-auto p-4 md:p-6">
                     {children}
                 </main>
             </div>
