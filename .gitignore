@@ -56,6 +56,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# scripts folder (contains hardcoded credentials - local use only)
+/scripts/
+
 # vercel
 .vercel
 
