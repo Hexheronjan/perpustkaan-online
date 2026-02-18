@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb, initDb } from '@/lib/db';
+import { getDb, initDb, withTransaction } from '@/lib/db';
 import { requireRole, ROLES } from '@/lib/roles';
 
 export async function GET(req) {
@@ -47,51 +47,39 @@ export async function POST(req) {
         return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
+    await initDb();
+    const body = await req.json();
+    const { user_id, buku_id } = body;
+
+    if (!user_id || !buku_id) {
+        return NextResponse.json({ message: 'User ID and Book ID are required' }, { status: 400 });
+    }
+
     try {
-        await initDb();
-        const db = getDb();
-        const body = await req.json();
-        const { user_id, buku_id } = body;
+        await withTransaction(async (client) => {
+            // Check stock
+            const bookCheck = await client.query('SELECT stok_tersedia FROM buku WHERE id = $1 FOR UPDATE', [buku_id]);
+            if (bookCheck.rows.length === 0) throw new Error('Book not found');
+            if (bookCheck.rows[0].stok_tersedia <= 0) throw new Error('Book out of stock');
 
-        if (!user_id || !buku_id) {
-            return NextResponse.json({ message: 'User ID and Book ID are required' }, { status: 400 });
-        }
+            // Calculate return date (7 days from now)
+            const tanggalPinjam = new Date();
+            const tanggalKembaliTarget = new Date();
+            tanggalKembaliTarget.setDate(tanggalPinjam.getDate() + 7);
 
-        // Start transaction
-        await db.query('BEGIN');
+            // Insert loan
+            await client.query(`
+                INSERT INTO peminjaman (user_id, buku_id, tanggal_pinjam, tanggal_kembali_target, status)
+                VALUES ($1, $2, $3, $4, 'pending')
+            `, [user_id, buku_id, tanggalPinjam, tanggalKembaliTarget]);
 
-        // Check stock
-        const bookCheck = await db.query('SELECT stock FROM buku WHERE id = $1 FOR UPDATE', [buku_id]);
-        if (bookCheck.rows.length === 0) {
-            await db.query('ROLLBACK');
-            return NextResponse.json({ message: 'Book not found' }, { status: 404 });
-        }
-
-        if (bookCheck.rows[0].stock <= 0) {
-            await db.query('ROLLBACK');
-            return NextResponse.json({ message: 'Book out of stock' }, { status: 400 });
-        }
-
-        // Calculate return date (e.g., 7 days from now)
-        const tanggalPinjam = new Date();
-        const tanggalKembaliTarget = new Date();
-        tanggalKembaliTarget.setDate(tanggalPinjam.getDate() + 7);
-
-        // Insert loan
-        await db.query(`
-            INSERT INTO peminjaman (user_id, buku_id, tanggal_pinjam, tanggal_kembali_target, status)
-            VALUES ($1, $2, $3, $4, 'dipinjam')
-        `, [user_id, buku_id, tanggalPinjam, tanggalKembaliTarget]);
-
-        // Decrement stock
-        await db.query('UPDATE buku SET stock = stock - 1 WHERE id = $1', [buku_id]);
-
-        await db.query('COMMIT');
+            // Decrement stock
+            await client.query('UPDATE buku SET stok_tersedia = stok_tersedia - 1 WHERE id = $1', [buku_id]);
+        });
 
         return NextResponse.json({ message: 'Book borrowed successfully' });
     } catch (error) {
-        await getDb().query('ROLLBACK');
         console.error('Error borrowing book:', error);
-        return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });
     }
 }
