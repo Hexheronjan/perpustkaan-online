@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getDb, initDb } from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { requireRole, ROLES } from '@/lib/roles';
 
-initDb();
 
 export async function GET(req) {
 	const { ok } = await requireRole(req, [ROLES.MEMBER, ROLES.ADMIN]);

@@ -3,6 +3,7 @@ import pkg from 'pg';
 const { Pool } = pkg;
 
 let dbInstance;
+let dbInitialized = false; // ✅ Flag: initDb() hanya jalan sekali
 
 function getDatabaseConfig() {
 	const url = process.env.DATABASE_URL;
@@ -35,6 +36,10 @@ export function getDb() {
 }
 
 export async function initDb() {
+	// ✅ Hanya jalankan sekali — skip jika sudah diinisialisasi
+	if (dbInitialized) return;
+	dbInitialized = true;
+
 	const db = getDb();
 	// Tables: roles, users, genre, tags, buku, buku_tags, buku_pending, buku_pending_tags, peminjaman
 	await db.query(`

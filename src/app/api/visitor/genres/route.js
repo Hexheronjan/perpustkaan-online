@@ -1,26 +1,25 @@
-// src/app/api/visitor/genre/route.js
+// src/app/api/visitor/genres/route.js
 import { NextResponse } from 'next/server';
-import { getDb, initDb } from '@/lib/db';
+import { getDb } from '@/lib/db';
 
 export async function GET(req) {
   try {
-    await initDb();
     const db = getDb();
-    
+
     // ✅ PUBLIC - No auth check
     const result = await db.query(`
       SELECT 
         id,
         nama_genre as name,
         deskripsi as description,
-        created_at as createdAt
+        created_at as "createdAt"
       FROM genre 
       ORDER BY nama_genre ASC
     `);
-    
+
     console.log('✅ Visitor genres fetched:', result.rows.length);
     return NextResponse.json(result.rows);
-    
+
   } catch (error) {
     console.error('❌ Visitor Genre API Error:', error);
     return NextResponse.json({

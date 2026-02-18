@@ -1,10 +1,9 @@
 // src/app/api/visitor/books/route.js
 import { NextResponse } from 'next/server';
-import { getDb, initDb } from '@/lib/db';
+import { getDb } from '@/lib/db';
 
 export async function GET(req) {
   try {
-    await initDb();
     const db = getDb();
 
     // ✅ PUBLIC - No auth check
@@ -21,12 +20,12 @@ export async function GET(req) {
         b.stok_tersedia as stock,
         b.stok_total as total_stock,
         b.sampul_buku as cover,
-        b.genre_id as genreId,
-        b.created_at as createdAt,
+        b.genre_id as "genreId",
+        b.created_at as "createdAt",
         g.nama_genre as genre_name
       FROM buku b
       LEFT JOIN genre g ON b.genre_id = g.id
-      WHERE b.status = 'approved' OR b.is_approved = true
+      WHERE b.is_approved = true
       ORDER BY b.created_at DESC
     `);
 

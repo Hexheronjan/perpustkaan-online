@@ -20,21 +20,20 @@ const BookCard = ({ book, onViewDetail }) => (
         <BookOpen size={48} className="text-indigo-400" />
       </div>
     )}
-    
+
     <div className="p-4">
       <h3 className="font-bold text-gray-800 mb-1 line-clamp-2 h-12">{book.judul}</h3>
       <p className="text-sm text-gray-600 mb-3">{book.penulis}</p>
-      
+
       <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
         <span className="flex items-center gap-1">
           <Calendar size={14} />
           {book.tahun_terbit || 'N/A'}
         </span>
-        <span className={`px-2 py-1 rounded-full font-medium ${
-          book.stok_tersedia > 0 
-            ? 'bg-green-100 text-green-700' 
+        <span className={`px-2 py-1 rounded-full font-medium ${book.stok_tersedia > 0
+            ? 'bg-green-100 text-green-700'
             : 'bg-red-100 text-red-700'
-        }`}>
+          }`}>
           {book.stok_tersedia > 0 ? `Stok: ${book.stok_tersedia}` : 'Habis'}
         </span>
       </div>
@@ -51,7 +50,7 @@ const BookCard = ({ book, onViewDetail }) => (
 
 const Modal = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
-  
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
@@ -172,7 +171,7 @@ export default function KatalogBukuPage() {
       const booksArray = Array.isArray(booksData) ? booksData : [];
       const genresArray = Array.isArray(genresData) ? genresData : [];
 
-      setBooks(booksArray.filter(book => book.is_approved));
+      setBooks(booksArray.filter(book => book.status === 'approved' || book.is_approved));
       setGenres(genresArray);
       setLoading(false);
     } catch (error) {
@@ -183,19 +182,19 @@ export default function KatalogBukuPage() {
     }
   };
 
-  const years = Array.isArray(books) 
+  const years = Array.isArray(books)
     ? [...new Set(books.map(book => book.tahun_terbit).filter(Boolean))].sort((a, b) => b - a)
     : [];
 
   const filteredBooks = Array.isArray(books) ? books.filter(book => {
-    const matchesSearch = 
+    const matchesSearch =
       book.judul?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       book.penulis?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       book.penerbit?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesGenre = selectedGenre === 'all' || book.genre_id === Number(selectedGenre);
     const matchesYear = selectedYear === 'all' || book.tahun_terbit === Number(selectedYear);
-    
+
     return matchesSearch && matchesGenre && matchesYear;
   }) : [];
 
@@ -241,11 +240,10 @@ export default function KatalogBukuPage() {
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
-                showFilters 
-                  ? 'bg-indigo-600 text-white border-indigo-600' 
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${showFilters
+                  ? 'bg-indigo-600 text-white border-indigo-600'
                   : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-              }`}
+                }`}
             >
               <Filter size={20} />
               Filter

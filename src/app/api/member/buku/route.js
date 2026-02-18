@@ -34,7 +34,7 @@ export async function GET(req) {
 		const result = await db.query(`
 			SELECT b.*, g.nama_genre FROM buku b
 			LEFT JOIN genre g ON b.genre_id = g.id
-			WHERE b.status = 'approved' OR b.is_approved = true
+			WHERE b.is_approved = true
 			ORDER BY b.created_at DESC
 		`);
 
