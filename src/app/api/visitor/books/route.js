@@ -26,7 +26,7 @@ export async function GET(req) {
         g.nama_genre as genre_name
       FROM buku b
       LEFT JOIN genre g ON b.genre_id = g.id
-      WHERE b.is_approved = true
+      WHERE b.status = 'approved' OR b.is_approved = true
       ORDER BY b.created_at DESC
     `);
 
