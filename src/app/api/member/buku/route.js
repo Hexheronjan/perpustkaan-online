@@ -30,11 +30,12 @@ export async function GET(req) {
 		await initDb();
 		const db = getDb();
 
-		// Filter only approved books
+		// Filter only approved books (support both old is_approved and new status column)
 		const result = await db.query(`
-			SELECT * FROM buku 
-			WHERE is_approved = true
-			ORDER BY created_at DESC
+			SELECT b.*, g.nama_genre FROM buku b
+			LEFT JOIN genre g ON b.genre_id = g.id
+			WHERE b.status = 'approved' OR b.is_approved = true
+			ORDER BY b.created_at DESC
 		`);
 
 		return NextResponse.json(result.rows.map(mapBuku));

@@ -69,8 +69,8 @@ export async function POST(req) {
 	let peminjamanId;
 	try {
 		await withTransaction(async (client) => {
-			// Check if book exists and is approved
-			const bukuResult = await client.query(`SELECT * FROM buku WHERE id = $1 AND is_approved = true`, [buku_id]);
+			// Check if book exists and is approved (support both old is_approved and new status column)
+			const bukuResult = await client.query(`SELECT * FROM buku WHERE id = $1 AND (status = 'approved' OR is_approved = true)`, [buku_id]);
 			if (bukuResult.rows.length === 0) throw new Error('Buku tidak ditemukan atau belum disetujui');
 			const buku = bukuResult.rows[0];
 			if (buku.stok_tersedia <= 0) throw new Error('Stok buku habis');
